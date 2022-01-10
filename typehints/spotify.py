@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional, TypedDict
+from typing import TypedDict, Optional
 
 
-# --- both --- #
+# --- all --- #
 
 class SpotifyExternalUrls(TypedDict):
     spotify: str
@@ -15,52 +15,7 @@ class SpotifyImage(TypedDict):
     width: int
 
 
-# --- current user playlists --- #
-
-
-class Owner(TypedDict):
-    display_name: str
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    type: str
-    uri: str
-
-
-class Tracks(TypedDict):
-    href: str
-    total: int
-
-
-class CurrentUserPlaylists(TypedDict):
-    collaborative: bool
-    description: str
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    images: list[SpotifyImage]
-    name: str
-    owner: Owner
-    primary_color: None
-    public: bool
-    snapshot_id: str
-    tracks: Tracks
-    type: str
-    uri: str
-
-
-# --- playlist items --- #
-
-
-class AddedBy(TypedDict):
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    type: str
-    uri: str
-
-
-class Artist(TypedDict):
+class SpotifyArtist(TypedDict):
     external_urls: SpotifyExternalUrls
     href: str
     id: str
@@ -69,9 +24,9 @@ class Artist(TypedDict):
     uri: str
 
 
-class Album(TypedDict):
+class SpotifyAlbum(TypedDict):
     album_type: str
-    artists: list[Artist]
+    artists: list[SpotifyArtist]
     external_urls: SpotifyExternalUrls
     href: str
     id: str
@@ -84,18 +39,14 @@ class Album(TypedDict):
     uri: str
 
 
-class ExternalIds(TypedDict):
-    isrc: str
-
-
 class SpotifyTrack(TypedDict):
-    album: Album
-    artists: list[Artist]
+    album: SpotifyAlbum
+    artists: list[SpotifyArtist]
     disc_number: int
     duration_ms: int
-    episode: bool
+    episode: bool  # optional
     explicit: bool
-    external_ids: ExternalIds
+    external_ids: SpotifyExternalIds
     external_urls: SpotifyExternalUrls
     href: str
     id: str
@@ -103,20 +54,85 @@ class SpotifyTrack(TypedDict):
     name: str
     popularity: int
     preview_url: Optional[str]
-    track: bool
+    track: bool  # optional
     track_number: int
     type: str
     uri: str
 
 
-class VideoThumbnail(TypedDict):
-    url: None
+# --- current user playlists --- #
+
+
+class SpotifyPlaylistOwner(TypedDict):
+    display_name: str
+    external_urls: SpotifyExternalUrls
+    href: str
+    id: str
+    type: str
+    uri: str
+
+
+class SpotifyPlaylistTracks(TypedDict):
+    href: str
+    total: int
+
+
+class SpotifyPlaylist(TypedDict):
+    collaborative: bool
+    description: str
+    external_urls: SpotifyExternalUrls
+    href: str
+    id: str
+    images: list[SpotifyImage]
+    name: str
+    owner: SpotifyPlaylistOwner
+    primary_color: None
+    public: bool
+    snapshot_id: str
+    tracks: SpotifyPlaylistTracks
+    type: str
+    uri: str
+
+
+# --- playlist items --- #
+
+
+class SpotifyPlaylistAddedBy(TypedDict):
+    external_urls: SpotifyExternalUrls
+    href: str
+    id: str
+    type: str
+    uri: str
+
+
+class SpotifyExternalIds(TypedDict):
+    isrc: str
+
+
+class SpotifyVideoThumbnail(TypedDict):
+    url: Optional[str]
 
 
 class SpotifyPlaylistItem(TypedDict):
     added_at: str
-    added_by: AddedBy
+    added_by: SpotifyPlaylistAddedBy
     is_local: bool
     primary_color: None
     track: SpotifyTrack
-    video_thumbnail: VideoThumbnail
+    video_thumbnail: SpotifyVideoThumbnail
+
+
+# --- liked songs --- #
+
+class SpotifyArtistsItem(TypedDict):
+    external_urls: SpotifyExternalUrls
+    href: str
+    id: str
+    name: str
+    type: str
+    uri: str
+
+
+class SpotifyLikedSong(TypedDict):
+    added_at: str
+    track: SpotifyTrack

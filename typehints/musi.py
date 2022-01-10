@@ -17,6 +17,13 @@ class MusiPlaylist(TypedDict):
     date: int  # int(time.time())
 
 
+class MusiLibrary(TypedDict):
+    ot: Literal["custom"]
+    items: list[MusiItem]
+    name: Literal["My Library"]
+    date: int  # int(time.time())
+
+
 class MusiVideo(TypedDict):
     created_date: float  # time.time()
     video_duration: int  # in seconds

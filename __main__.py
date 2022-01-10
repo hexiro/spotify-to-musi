@@ -16,11 +16,11 @@ import youtubesearchpython
 from requests_toolbelt import MultipartEncoder
 
 if TYPE_CHECKING:
-    from typehints.musi import MusiPlaylist, MusiVideo, MusiBackupResponse
-    from typehints.spotify import SpotifyTrack, SpotifyPlaylistItem, CurrentUserPlaylists
+    from typehints.musi import MusiPlaylist, MusiVideo, MusiBackupResponse, MusiLibrary
+    from typehints.spotify import SpotifyTrack, SpotifyPlaylistItem, SpotifyPlaylist, SpotifyLikedSong
     from typehints.youtube import YoutubeResult
 
-# TODO: spotify liked songs --> musi library
+# TODO: cache song queries
 # TODO: bulk search youtube videos
 
 logger = logging.getLogger(__name__)
@@ -42,20 +42,25 @@ if SPOTIFY_FIRST_TIME_SETUP:
 spotify_oauth = spotipy.SpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
-    scope="playlist-read-collaborative",
+    scope="user-library-read playlist-read-collaborative",
     redirect_uri="https://example.com/callback/",
     open_browser=False,
-    cache_handler=spotipy.CacheFileHandler(cache_path="spotify.cache")
+    cache_handler=spotipy.CacheFileHandler(cache_path="spotify.cache"),
 )
 spotify = spotipy.Spotify(auth_manager=spotify_oauth)
 
-def search_youtube(spotify_title: str) -> MusiVideo:
+
+def search_youtube(title: str) -> MusiVideo:
     def parse_duration(duration: str) -> int:
         minutes, seconds = duration.split(":")
         return (int(minutes) * 60) + int(seconds)
 
-    query = youtubesearchpython.VideosSearch(spotify_title, limit=1)
+    logger.info(f"Searching youtube for track, {title}")
+
+    query = youtubesearchpython.VideosSearch(title, limit=1)
     result: YoutubeResult = query.resultComponents[0]
+
+    logger.info("Done!")
 
     return {
         "created_date": time.time(),
@@ -71,11 +76,28 @@ if not SPOTIFY_FIRST_TIME_SETUP:
     logger.debug(f"{SPOTIFY_CLIENT_SECRET=}")
     logger.info("Fetching spotify playlists... ")
 
-spotify_playlists: list[CurrentUserPlaylists] = spotify.current_user_playlists()["items"]
+liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks()["items"]
+spotify_playlists: list[SpotifyPlaylist] = spotify.current_user_playlists()["items"]
 musi_playlists: dict[str, list[MusiVideo]] = defaultdict(list)
+musi_library: list[MusiVideo] = []
 
-logger.info("Done!")
 logger.debug(spotify_playlists)
+
+
+def spotify_title(track: SpotifyTrack) -> str:
+    song_artist = track["artists"][0]["name"]
+    song_name = track["name"]
+    return f"{song_artist} - {song_name}"
+
+
+for liked_song in liked_songs:
+    track = liked_song["track"]
+    title = spotify_title(track)
+    video = search_youtube(title)
+    logger.debug(video)
+    if not video:
+        continue
+    musi_library.append(video)
 
 for playlist in spotify_playlists:
 
@@ -98,41 +120,41 @@ for playlist in spotify_playlists:
     logger.debug(tracks)
 
     for track in tracks:
-        song_artist = track["artists"][0]["name"]
-        song_name = track["name"]
-        spotify_title: str = f"{song_artist} - {song_name}"
-
-        logger.info(f"Searching youtube for track, {spotify_title}")
-        video = search_youtube(spotify_title)
-        logger.info("Done!")
+        title = spotify_title(track)
+        video = search_youtube(title)
         logger.debug(video)
-
         if not video:
             continue
         musi_playlists[playlist_name].append(video)
-    break
 
 playlist_items: list[MusiVideo] = []
 playlists: list[MusiPlaylist] = []
+library: MusiLibrary = {
+    "ot": "custom",
+    "items": [],
+    "name": "My Library",
+    "date": time.time()
+}
+
 for name, videos in musi_playlists.items():
     playlist_items.extend(videos)
-    playlists.append({
-        "ot": "custom",
-        "name": name,
-        "type": "user",
-        "date": int(time.time()),
-        "items": [
-            {"cd": int(vid["created_date"]), "pos": i, "video_id": vid["video_id"]} for i, vid in enumerate(videos)
-        ]
-    })
+    playlists.append(
+        {
+            "ot": "custom",
+            "name": name,
+            "type": "user",
+            "date": int(time.time()),
+            "items": [
+                {"cd": int(vid["created_date"]), "pos": i, "video_id": vid["video_id"]} for i, vid in enumerate(videos)
+            ],
+        }
+    )
+
+for index, vid in enumerate(musi_library):
+    library["items"].append({"cd": int(vid["created_date"]), "pos": index, "video_id": vid["video_id"]})
 
 payload = {
-    "library": {
-        "ot": "custom",
-        "items": [],
-        "name": "My Library",
-        "date": time.time(),
-    },
+    "library": library,
     "playlist_items": playlist_items,
     "playlists": playlists,
 }
