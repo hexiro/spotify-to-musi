@@ -2,62 +2,56 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, TypeAlias
 
 if TYPE_CHECKING:
     from typehints.musi import MusiVideo, MusiItem
 
-
 # youtube video and data about the spotify artist that was used to find it.
 
-class DictSongAndVideo(TypedDict):
-    spotify_artist: str
-    spotify_name: str
-    video_duration: int  # in seconds
-    video_name: str
-    video_creator: str  # channel name
+
+class TrackDict(TypedDict):
+    artist: str
+    song: str
+    duration: int  # in seconds
     video_id: str
 
 
 @dataclass
-class SongAndVideo:
-    spotify_artist: str
-    spotify_name: str
-    video_duration: int  # in seconds
-    video_name: str
-    video_creator: str  # channel name
+class Track:
+    artist: str
+    song: str
+    duration: int  # in seconds
     video_id: str
     is_from_cache: bool = False
 
     def __post_init__(self):
-        self.created_date = time.time()
+        self.creation_time = time.time()
 
     @property
     def title(self) -> str:
-        return f"{self.spotify_artist} - {self.spotify_name}"
+        return f"{self.artist} - {self.song}"
 
-    def to_dict(self) -> DictSongAndVideo:
+    def to_dict(self) -> TrackDict:
         return {
-            "spotify_artist": self.spotify_artist,
-            "spotify_name": self.spotify_name,
-            "video_duration": self.video_duration,
-            "video_name": self.video_name,
-            "video_creator": self.video_creator,
+            "artist": self.artist,
+            "song": self.song,
+            "duration": self.duration,
             "video_id": self.video_id,
         }
 
     def to_musi_video(self) -> MusiVideo:
         return {
-            "created_date": self.created_date,
-            "video_duration": self.video_duration,
-            "video_name": self.video_name,
-            "video_creator": self.video_creator,
+            "created_date": self.creation_time,
+            "video_duration": self.duration,
+            "video_name": self.song,
+            "video_creator": self.artist,
             "video_id": self.video_id,
         }
 
     def to_musi_item(self, position: int) -> MusiItem:
         return {
-            "cd": int(self.created_date),
+            "cd": int(self.creation_time),
             "pos": position,
             "video_id": self.video_id,
         }

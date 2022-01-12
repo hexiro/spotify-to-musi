@@ -15,14 +15,14 @@ import spotipy
 import youtubesearchpython
 from requests_toolbelt import MultipartEncoder
 
-from typehints.general import SongAndVideo, DictSongAndVideo
-from typehints.youtube import YoutubeResult
+from typehints.general import Track
 
 if TYPE_CHECKING:
+    from typehints.general import TrackDict
+    from typehints.youtube import YoutubeResult
     from typehints.musi import MusiPlaylist, MusiVideo, MusiBackupResponse, MusiItem
     from typehints.spotify import SpotifyTrack, SpotifyPlaylistItem, SpotifyPlaylist, SpotifyLikedSong
 
-# TODO: cache song queries
 # TODO: bulk search youtube videos
 
 logger = logging.getLogger(__name__)
@@ -63,11 +63,11 @@ spotify_playlists: list[SpotifyPlaylist] = spotify.current_user_playlists()["ite
 spotify_liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks()["items"]
 
 # from cache, and global song catalog
-songs: list[SongAndVideo] = []
+tracks: list[Track] = []
 
 # middle ground between spotify and musi
-playlists: dict[str, list[SongAndVideo]] = defaultdict(list)
-library: list[SongAndVideo] = []
+playlists: dict[str, list[Track]] = defaultdict(list)
+library: list[Track] = []
 
 # typed dicts for final request data
 musi_items: list[MusiVideo] = []
@@ -76,36 +76,35 @@ musi_library_items: list[MusiItem] = []
 
 if os.path.exists("cache/data.cache.json"):
     with open("cache/data.cache.json") as file:
-        cached_data: list[DictSongAndVideo] = json.load(file)
+        cached_data: list[TrackDict] = json.load(file)
     logger.debug(f"{cached_data=}")
-    for song in cached_data:
-        deserialized = SongAndVideo(**song, is_from_cache=True)
-        songs.append(deserialized)
-    logger.debug(f"{songs=}")
+    for track in cached_data:
+        deserialized = Track(**track, is_from_cache=True)
+        tracks.append(deserialized)
+    logger.debug(f"{tracks=}")
 
 if not SPOTIFY_FIRST_TIME_SETUP:
     logger.info("Done!")
 
 
-def search(track: SpotifyTrack) -> SongAndVideo:
+def search(spotify_track: SpotifyTrack) -> Track:
     """
     search cache and if not found search youtube.
     """
-    artist_name = track["artists"][0]["name"]
-    track_name = track["name"]
+    artist = spotify_track["artists"][0]["name"]
+    song = spotify_track["name"]
 
-    cached_song = search_cache(artist_name, track_name)
+    cached_track = search_cache(artist, song)
 
-    if cached_song:
-        return cached_song
+    if cached_track:
+        return cached_track
     else:
-        return search_youtube(artist_name, track_name)
+        return search_youtube(artist, song)
 
 
-def search_cache(artist_name: str, track_name: str) -> SongAndVideo | None:
-    logger.debug(f"Searching cache for artist, {artist_name!r} and name, {track_name!r}")
-    search_cache = [song for song in songs if (song.spotify_artist == artist_name and
-                                               song.spotify_name == track_name)]
+def search_cache(artist: str, song: str) -> Track | None:
+    logger.debug(f"Searching cache for artist, {artist!r} and name, {song!r}")
+    search_cache = [e for e in tracks if (e.artist == artist and e.song == song)]
     if not any(search_cache):
         return None
 
@@ -114,41 +113,41 @@ def search_cache(artist_name: str, track_name: str) -> SongAndVideo | None:
     return cached_song
 
 
-def search_youtube(artist_name: str, track_name: str) -> SongAndVideo:
+def search_youtube(artist: str, song: str) -> Track:
     def parse_duration(duration: str) -> int:
         minutes, seconds = duration.split(":")
         return (int(minutes) * 60) + int(seconds)
 
-    search_query = f"{artist_name} - {track_name}"
+    search_query = f"{artist} - {song} (Official Audio)"
 
     logger.info(f"Searching youtube for track, {search_query!r}")
 
     query = youtubesearchpython.VideosSearch(search_query, limit=1)
     result: YoutubeResult = query.resultComponents[0]
 
-    logger.info("Done!")
+    title: str = result["title"]
+    channel_name: str = result["channel"]["name"]
 
-    song = SongAndVideo(
-        spotify_artist=artist_name,
-        spotify_name=track_name,
-        video_duration=parse_duration(result["duration"]),
-        video_name=result["title"],
-        video_creator=result["channel"]["name"],
+    logger.info(f"Done! {title=!r} {channel_name=!r}")
+
+    track = Track(
+        artist=artist,
+        song=song,
+        duration=parse_duration(result["duration"]),
         video_id=result["id"],
-        is_from_cache=False
     )
-    songs.append(song)
-    return song
+    tracks.append(track)
+    return track
 
 
 for liked_song in spotify_liked_songs:
-    track = liked_song["track"]
-    video = search(track)
-    library.append(video)
+    spotify_track = liked_song["track"]
+    track = search(spotify_track)
+    library.append(track)
 
-for playlist in spotify_playlists:
-    playlist_name = playlist["name"]
-    playlist_id = playlist["id"]
+for spotify_playlist in spotify_playlists:
+    playlist_name = spotify_playlist["name"]
+    playlist_id = spotify_playlist["id"]
 
     logger.info(f"Starting to search playlist, {playlist_name}")
     logger.info("Fetching tracks... ")
@@ -161,21 +160,21 @@ for playlist in spotify_playlists:
         results = spotify.next(results)
         items.extend(results["items"])
 
-    tracks: list[SpotifyTrack] = [item["track"] for item in items]
+    spotify_tracks: list[SpotifyTrack] = [item["track"] for item in items]
     logger.info("Done!")
 
     # handle tracks
 
-    for track in tracks:
-        video = search(track)
+    for spotify_track in spotify_tracks:
+        video = search(spotify_track)
         playlists[playlist_name].append(video)
 
-for name, videos in playlists.items():
-    # add videos to global video catalog
-    for vid in videos:
-        musi_items.append(vid.to_musi_video())
+for name, playlist_tracks in playlists.items():
+    # add tracks to global video catalog
+    for track in playlist_tracks:
+        musi_items.append(track.to_musi_video())
     # add playlist
-    musi_playlist_items = [vid.to_musi_item(index) for index, vid in enumerate(videos)]
+    musi_playlist_items = [track.to_musi_item(index) for index, track in enumerate(playlist_tracks)]
     musi_playlist: MusiPlaylist = {
         "ot": "custom",
         "name": name,
@@ -186,14 +185,14 @@ for name, videos in playlists.items():
     musi_playlists.append(musi_playlist)
 
 # {"cd": int(vid["created_date"]), "pos": index, "video_id": vid["video_id"]}
-for position, vid in enumerate(library):
-    # add videos to global video catalog
-    musi_items.append(vid.to_musi_video())
+for position, track in enumerate(library):
+    # add track to global video catalog
+    musi_items.append(track.to_musi_video())
     # add library-specific videos
-    musi_library_items.append(vid.to_musi_item(position))
+    musi_library_items.append(track.to_musi_item(position))
 
 # cache
-cache: list[DictSongAndVideo] = [c.to_dict() for c in songs]
+cache: list[TrackDict] = [c.to_dict() for c in tracks]
 
 with open("cache/data.cache.json", "w") as file:
     json.dump(cache, file, indent=4)
