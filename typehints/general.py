@@ -27,6 +27,7 @@ class SongAndVideo:
     video_name: str
     video_creator: str  # channel name
     video_id: str
+    is_from_cache: bool = False
 
     def __post_init__(self):
         self.created_date = time.time()
@@ -34,10 +35,6 @@ class SongAndVideo:
     @property
     def title(self) -> str:
         return f"{self.spotify_artist} - {self.spotify_name}"
-
-    @property
-    def offical_title(self):
-        return f"{self.title} (Official Audio)"
 
     def to_dict(self) -> DictSongAndVideo:
         return {
