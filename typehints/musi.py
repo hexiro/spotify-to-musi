@@ -15,6 +15,7 @@ class MusiPlaylist(TypedDict):
     name: str
     type: Literal["user"]
     date: int  # int(time.time())
+    ciu: str  # playlist cover image (url)
 
 
 class MusiLibrary(TypedDict):

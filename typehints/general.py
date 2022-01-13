@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypedDict, TypeAlias
+from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     from typehints.musi import MusiVideo, MusiItem
+
+
+@dataclass(frozen=True, eq=True)
+class Playlist:
+    name: str
+    cover_url: str
+
 
 # youtube video and data about the spotify artist that was used to find it.
 

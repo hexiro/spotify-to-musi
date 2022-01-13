@@ -15,7 +15,7 @@ import spotipy
 import youtubesearchpython
 from requests_toolbelt import MultipartEncoder
 
-from typehints.general import Track
+from typehints.general import Track, Playlist
 
 if TYPE_CHECKING:
     from typehints.general import TrackDict
@@ -66,7 +66,7 @@ spotify_liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks(
 tracks: list[Track] = []
 
 # middle ground between spotify and musi
-playlists: dict[str, list[Track]] = defaultdict(list)
+playlists: dict[Playlist, list[Track]] = defaultdict(list)
 library: list[Track] = []
 
 # typed dicts for final request data
@@ -148,6 +148,7 @@ for liked_song in spotify_liked_songs:
 for spotify_playlist in spotify_playlists:
     playlist_name = spotify_playlist["name"]
     playlist_id = spotify_playlist["id"]
+    playlist_cover_url = spotify_playlist["images"][0]["url"]
 
     logger.info(f"Starting to search playlist, {playlist_name}")
     logger.info("Fetching tracks... ")
@@ -165,11 +166,14 @@ for spotify_playlist in spotify_playlists:
 
     # handle tracks
 
-    for spotify_track in spotify_tracks:
-        video = search(spotify_track)
-        playlists[playlist_name].append(video)
+    # immutable. If a playlist with the exact same params are made it will map to the same item in the dict.
+    playlist = Playlist(playlist_name, playlist_cover_url)
 
-for name, playlist_tracks in playlists.items():
+    for spotify_track in spotify_tracks:
+        track = search(spotify_track)
+        playlists[playlist].append(track)
+
+for playlist, playlist_tracks in playlists.items():
     # add tracks to global video catalog
     for track in playlist_tracks:
         musi_items.append(track.to_musi_video())
@@ -177,10 +181,11 @@ for name, playlist_tracks in playlists.items():
     musi_playlist_items = [track.to_musi_item(index) for index, track in enumerate(playlist_tracks)]
     musi_playlist: MusiPlaylist = {
         "ot": "custom",
-        "name": name,
+        "name": playlist.name,
         "type": "user",
         "date": int(time.time()),
-        "items": musi_playlist_items
+        "items": musi_playlist_items,
+        "ciu": playlist.cover_url
     }
     musi_playlists.append(musi_playlist)
 
@@ -202,12 +207,7 @@ logger.debug(f"{musi_items=}")
 logger.debug(f"{musi_playlists=}")
 
 payload = {
-    "library": {
-        "ot": "custom",
-        "items": musi_library_items,
-        "name": "My Library",
-        "date": time.time()
-    },
+    "library": {"ot": "custom", "items": musi_library_items, "name": "My Library", "date": time.time()},
     "playlist_items": musi_items,
     "playlists": musi_playlists,
 }
