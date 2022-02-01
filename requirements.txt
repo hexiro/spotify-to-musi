@@ -2,4 +2,6 @@ python_dotenv ~= 0.19.2
 requests ~= 2.27.1
 requests_toolbelt ~= 0.9.1
 spotipy ~= 2.19.0
-youtube_search_python ~= 1.5.3
+youtube_search_python >= 1.6.2
+python-dotenv >= 0.19.2
+rich >= 10.12.0

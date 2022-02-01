@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import atexit
 import json
 import logging
 import os
-import sys
+import pathlib
 import time
 import uuid
 from collections import defaultdict
@@ -11,9 +12,12 @@ from typing import TYPE_CHECKING, Final
 
 import dotenv
 import requests
+import rich
 import spotipy
 import youtubesearchpython
 from requests_toolbelt import MultipartEncoder
+from rich.logging import RichHandler
+from rich.progress import Progress
 
 from typehints.general import Track, Playlist
 
@@ -25,22 +29,23 @@ if TYPE_CHECKING:
 
 # TODO: bulk search youtube videos
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-stream_handler = logging.StreamHandler(stream=sys.stdout)
-stream_handler.setFormatter(logging.Formatter(fmt="[%(levelname)s]: %(message)s"))
-logger.addHandler(stream_handler)
-
 dotenv.load_dotenv(".env")
+console = rich.get_console()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, tracebacks_show_locals=True, console=console)],
+)
+logger = logging.getLogger(__name__)
+
+data_cache_path = pathlib.Path("./data/spotify.cache.json")
+spotify_cache_path = pathlib.Path("./cache/spotify.cache.json")
 
 SPOTIFY_CLIENT_ID: Final[str] = os.environ["SPOTIFY_CLIENT_ID"]
 SPOTIFY_CLIENT_SECRET: Final[str] = os.environ["SPOTIFY_CLIENT_SECRET"]
-SPOTIFY_FIRST_TIME_SETUP = not os.path.isdir("cache")
-
-if SPOTIFY_FIRST_TIME_SETUP:
-    os.mkdir("cache")
-    logger.info("First time spotify setup, you will only have to do this once.")
+SPOTIFY_FIRST_TIME_SETUP: Final[bool] = not spotify_cache_path.is_file()
 
 spotify_oauth = spotipy.SpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
@@ -48,19 +53,23 @@ spotify_oauth = spotipy.SpotifyOAuth(
     scope="user-library-read playlist-read-collaborative",
     redirect_uri="https://example.com/callback/",
     open_browser=False,
-    cache_handler=spotipy.CacheFileHandler(cache_path="cache/spotify.cache.json"),
+    cache_handler=spotipy.CacheFileHandler(cache_path=str(spotify_cache_path)),
 )
 spotify = spotipy.Spotify(auth_manager=spotify_oauth)
 
-if not SPOTIFY_FIRST_TIME_SETUP:
-    logger.debug(f"{SPOTIFY_CLIENT_ID=}")
-    logger.debug(f"{SPOTIFY_CLIENT_SECRET=}")
-    logger.info("Fetching spotify playlists... ")
-    logger.info("Fetching spotify liked songs... ")
+if SPOTIFY_FIRST_TIME_SETUP:
+    if not spotify_cache_path.parent.is_dir():
+        spotify_cache_path.parent.mkdir()
+    logger.info("First time spotify setup, you will only have to do this once.")
+    # spotify doesn't ensure credentials are valid before you call something,
+    # and it gets ugly if i make the first call inside the rich progress bar section.
+    # so i'm just gonna call a random func here
+    spotify.me()
+    os.system("cls" if os.name == "nt" else "clear")
 
 # fetched from spotify
-spotify_playlists: list[SpotifyPlaylist] = spotify.current_user_playlists()["items"]
-spotify_liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks()["items"]
+spotify_playlists: list[SpotifyPlaylist] = []
+spotify_liked_songs: list[SpotifyLikedSong] = []
 
 # from cache, and global song catalog
 tracks: list[Track] = []
@@ -74,8 +83,8 @@ musi_items: list[MusiVideo] = []
 musi_playlists: list[MusiPlaylist] = []
 musi_library_items: list[MusiItem] = []
 
-if os.path.exists("cache/data.cache.json"):
-    with open("cache/data.cache.json") as file:
+if data_cache_path.is_file():
+    with open(data_cache_path) as file:
         cached_data: list[TrackDict] = json.load(file)
     logger.debug(f"{cached_data=}")
     for track in cached_data:
@@ -85,6 +94,16 @@ if os.path.exists("cache/data.cache.json"):
 
 if not SPOTIFY_FIRST_TIME_SETUP:
     logger.info("Done!")
+
+
+def cache():
+    cache_items: list[TrackDict] = [c.to_dict() for c in tracks]
+
+    with open("cache/data.cache.json", "w") as file:
+        json.dump(cache_items, file, indent=4)
+
+
+atexit.register(cache)
 
 
 def search(spotify_track: SpotifyTrack) -> Track:
@@ -140,38 +159,70 @@ def search_youtube(artist: str, song: str) -> Track:
     return track
 
 
-for liked_song in spotify_liked_songs:
-    spotify_track = liked_song["track"]
-    track = search(spotify_track)
-    library.append(track)
+console.clear()
+with Progress(console=console, transient=True) as progress:
+    task_query_spotify_liked_songs = progress.add_task("[green]Querying Spotify For Liked Songs...", total=1)
+    spotify_liked_songs = spotify.current_user_saved_tracks()["items"]
+    progress.advance(task_query_spotify_liked_songs)
 
-for spotify_playlist in spotify_playlists:
-    playlist_name = spotify_playlist["name"]
-    playlist_id = spotify_playlist["id"]
-    playlist_cover_url = spotify_playlist["images"][0]["url"]
+    task_searching_youtube_liked_songs = progress.add_task(
+        "[cyan]Searching Youtube for Liked Songs...", advance=1, total=len(spotify_liked_songs)
+    )
 
-    logger.info(f"Starting to search playlist, {playlist_name}")
-    logger.info("Fetching tracks... ")
+    # task_sending_to_musi = progress.add_task("[green]Sending Data to Musi...", start=False)
 
-    # fetch tracks
-
-    results = spotify.playlist_items(playlist_id)
-    items: list[SpotifyPlaylistItem] = results["items"]
-    while results["next"]:
-        results = spotify.next(results)
-        items.extend(results["items"])
-
-    spotify_tracks: list[SpotifyTrack] = [item["track"] for item in items]
-    logger.info("Done!")
-
-    # handle tracks
-
-    # immutable. If a playlist with the exact same params are made it will map to the same item in the dict.
-    playlist = Playlist(playlist_name, playlist_cover_url)
-
-    for spotify_track in spotify_tracks:
+    for liked_song in spotify_liked_songs:
+        spotify_track = liked_song["track"]
         track = search(spotify_track)
-        playlists[playlist].append(track)
+        library.append(track)
+        progress.advance(task_searching_youtube_liked_songs)
+
+    task_query_spotify_playlists = progress.add_task("[green]Querying Spotify For Playlists...", total=1)
+    spotify_playlists = spotify.current_user_playlists()["items"]
+    progress.advance(task_query_spotify_playlists)
+
+    spotify_playlist_tracks: dict[str, list[SpotifyTrack]] = {}
+
+    for spotify_playlist in spotify_playlists:
+        playlist_name = spotify_playlist["name"]
+        playlist_id = spotify_playlist["id"]
+
+        logger.info(f"Starting to search playlist, {playlist_name}")
+        logger.info("Fetching tracks... ")
+
+        # fetch tracks
+
+        results = spotify.playlist_items(playlist_id)
+        items: list[SpotifyPlaylistItem] = results["items"]
+        while results["next"]:
+            results = spotify.next(results)
+            items.extend(results["items"])
+
+        spotify_tracks: list[SpotifyTrack] = [item["track"] for item in items]
+        spotify_playlist_tracks[playlist_name] = spotify_tracks
+        logger.info("Done!")
+
+    values = list(spotify_playlist_tracks.values())
+    lengths = [len(v) for v in values]
+
+    task_searching_youtube_playlists = progress.add_task(
+        "[cyan]Searching Youtube for Playlist Songs...", advance=1, total=sum(lengths)
+    )
+
+    for spotify_playlist in spotify_playlists:
+        playlist_name = spotify_playlist["name"]
+        playlist_id = spotify_playlist["id"]
+        playlist_cover_url = spotify_playlist["images"][0]["url"]
+        # handle tracks
+
+        # immutable. If a playlist with the exact same params are made it will map to the same item in the dict.
+        playlist = Playlist(playlist_name, playlist_cover_url)
+        spotify_tracks = spotify_playlist_tracks[playlist_name]
+
+        for spotify_track in spotify_tracks:
+            track = search(spotify_track)
+            playlists[playlist].append(track)
+            progress.advance(task_searching_youtube_playlists)
 
 for playlist, playlist_tracks in playlists.items():
     # add tracks to global video catalog
@@ -185,7 +236,7 @@ for playlist, playlist_tracks in playlists.items():
         "type": "user",
         "date": int(time.time()),
         "items": musi_playlist_items,
-        "ciu": playlist.cover_url
+        "ciu": playlist.cover_url,
     }
     musi_playlists.append(musi_playlist)
 
@@ -195,12 +246,6 @@ for position, track in enumerate(library):
     musi_items.append(track.to_musi_video())
     # add library-specific videos
     musi_library_items.append(track.to_musi_item(position))
-
-# cache
-cache: list[TrackDict] = [c.to_dict() for c in tracks]
-
-with open("cache/data.cache.json", "w") as file:
-    json.dump(cache, file, indent=4)
 
 logger.debug(f"{musi_library_items=}")
 logger.debug(f"{musi_items=}")
@@ -221,4 +266,6 @@ headers = {
 }
 resp = requests.post("https://feelthemusi.com/api/v4/backups/create", data=multipart_encoder, headers=headers)
 backup: MusiBackupResponse = resp.json()
+
 logger.info(f"{backup['success']} code={backup['code']}")
+console.print(f"[red]Success! use code, [bold]{backup['code']}[/bold] on Musi to restore your songs from Spotify.")
