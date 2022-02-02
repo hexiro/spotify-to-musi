@@ -40,7 +40,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-data_cache_path = pathlib.Path("./data/spotify.cache.json")
+data_cache_path = pathlib.Path("./cache/data.cache.json")
 spotify_cache_path = pathlib.Path("./cache/spotify.cache.json")
 
 SPOTIFY_CLIENT_ID: Final[str] = os.environ["SPOTIFY_CLIENT_ID"]
@@ -58,14 +58,14 @@ spotify_oauth = spotipy.SpotifyOAuth(
 spotify = spotipy.Spotify(auth_manager=spotify_oauth)
 
 if SPOTIFY_FIRST_TIME_SETUP:
+    logger.info("First time spotify setup, you will only have to do this once.")
     if not spotify_cache_path.parent.is_dir():
         spotify_cache_path.parent.mkdir()
-    logger.info("First time spotify setup, you will only have to do this once.")
-    # spotify doesn't ensure credentials are valid before you call something,
-    # and it gets ugly if i make the first call inside the rich progress bar section.
-    # so i'm just gonna call a random func here
-    spotify.me()
-    os.system("cls" if os.name == "nt" else "clear")
+
+# spotify doesn't ensure credentials are valid before you call something,
+# and it gets ugly if i make the first call inside the rich progress bar section.
+# so i'm just gonna call a random func here
+spotify.me()
 
 # fetched from spotify
 spotify_playlists: list[SpotifyPlaylist] = []
