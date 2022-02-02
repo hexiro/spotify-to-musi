@@ -50,7 +50,7 @@ SPOTIFY_FIRST_TIME_SETUP: Final[bool] = not spotify_cache_path.is_file()
 spotify_oauth = spotipy.SpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
-    scope="user-library-read playlist-read-collaborative",
+    scope="user-library-read playlist-read-collaborative playlist-read-private",
     redirect_uri="https://example.com/callback/",
     open_browser=False,
     cache_handler=spotipy.CacheFileHandler(cache_path=str(spotify_cache_path)),
@@ -240,7 +240,6 @@ for playlist, playlist_tracks in playlists.items():
     }
     musi_playlists.append(musi_playlist)
 
-# {"cd": int(vid["created_date"]), "pos": index, "video_id": vid["video_id"]}
 for position, track in enumerate(library):
     # add track to global video catalog
     musi_items.append(track.to_musi_video())
