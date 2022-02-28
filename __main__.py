@@ -19,7 +19,6 @@ import rich
 import spotipy
 import youtubesearchpython
 from requests_toolbelt import MultipartEncoder
-from rich import traceback
 from rich.logging import RichHandler
 from rich.progress import Progress
 
@@ -36,14 +35,17 @@ if TYPE_CHECKING:
 dotenv.load_dotenv(".env")
 console = rich.get_console()
 
-traceback.install()
+logging.root.setLevel(logging.DEBUG)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True, tracebacks_show_locals=True, console=console)],
-)
+# hacky way of setting all other loggers to ERROR
+# there's probably a better way to do this.
+
+for key in logging.Logger.manager.loggerDict:
+    logging.getLogger(key).setLevel(logging.ERROR)
+
+rich_handler = rich.logging.RichHandler(omit_repeated_times=False, rich_tracebacks=True)
+
+logging.root.addHandler(rich_handler)
 logger = logging.getLogger(__name__)
 
 data_cache_path = pathlib.Path("./cache/data.cache.json")
@@ -95,11 +97,9 @@ if data_cache_path.is_file():
     try:
         with open(data_cache_path) as file:
             cached_data: list[TrackDict] = json.load(file)
-        logger.debug(f"{cached_data=}")
         for track in cached_data:
             deserialized = Track(**track, is_from_cache=True)
             tracks.append(deserialized)
-        logger.debug(f"{tracks=}")
     except JSONDecodeError:
         pass
 
@@ -115,19 +115,30 @@ def cache():
 atexit.register(cache)
 
 
-def search(spotify_track: SpotifyTrack, cache_only: bool = False) -> Track:
+def search(spotify_track: SpotifyTrack, cache_only: bool = False) -> Track | None:
     """
     search cache and if not found search youtube.
     """
-    artist = spotify_track["artists"][0]["name"]
-    song = spotify_track["name"]
 
-    cached_track = search_cache(artist, song)
+    try:
+        artist = spotify_track["artists"][0]["name"]
+        song = spotify_track["name"]
+    except KeyError:
+        return None
 
-    if cached_track or cache_only:
-        return cached_track
+    search_query = f"{artist} - {song} (Official Audio)"
+
+    logger.info(f"searching for track: artist={artist} song={song}")
+
+    track: Track
+
+    if cached_track := search_cache(artist, song) or cache_only:
+        track = cached_track
     else:
-        return search_youtube(artist, song)
+        track = search_youtube(artist, song, search_query)
+
+    logger.info(f"done! title={track.title} video_id={track.video_id} artist={artist} song={song}")
+    return track
 
 
 def search_cache(artist: str, song: str) -> Track | None:
@@ -141,22 +152,20 @@ def search_cache(artist: str, song: str) -> Track | None:
     return cached_song
 
 
-def search_youtube(artist: str, song: str) -> Track:
+def search_youtube(artist: str, song: str, search_query: str) -> Track:
     def parse_duration(duration: str) -> int:
         minutes, seconds = duration.split(":")
         return (int(minutes) * 60) + int(seconds)
 
-    search_query = f"{artist} - {song} (Official Audio)"
+    logger.debug(f"Searching youtube for track, {search_query!r}")
 
-    logger.info(f"Searching youtube for track, {search_query!r}")
-
-    query = youtubesearchpython.VideosSearch(search_query, limit=1)
-    result: YoutubeResult = query.resultComponents[0]
+    search = youtubesearchpython.VideosSearch(search_query, limit=1)
+    result: YoutubeResult = search.resultComponents[0]
 
     title: str = result["title"]
     channel_name: str = result["channel"]["name"]
 
-    logger.info(f"Done! {title=!r} {channel_name=!r}")
+    logger.debug(f"Done! {title=!r} {channel_name=!r}")
 
     track = Track(
         artist=artist,
@@ -176,10 +185,14 @@ with Progress(console=console, transient=True) as progress:
 
     for liked_song in spotify_liked_songs:
         spotify_track = liked_song["track"]
+        if "available_markets" in spotify_track:
+            del spotify_track["available_markets"]
         spotify_liked_songs_tracks.append(spotify_track)
 
     progress.advance(task_query_spotify)
     spotify_playlists = spotify.current_user_playlists()["items"]
+
+    # print([p["name"] for p in spotify_playlists])
 
     for spotify_playlist in spotify_playlists:
         playlist_id = spotify_playlist["id"]
@@ -192,6 +205,8 @@ with Progress(console=console, transient=True) as progress:
             items.extend(results["items"])
 
         spotify_playlist_tracks[playlist_name] = [item["track"] for item in items]
+
+    logger.debug(f"loaded {len(spotify_playlists)} playlists")
 
     progress.advance(task_query_spotify)
 
@@ -217,6 +232,9 @@ with Progress(console=console, transient=True) as progress:
             if not thread.is_alive():
                 return
             spotify_track = spotify_tracks_to_search.get()
+            # logger.debug(f"{spotify_track=}")
+            if not spotify_track:
+                continue
             search(spotify_track)
             progress.advance(task_searching_youtube)
             spotify_tracks_to_search.task_done()
@@ -241,7 +259,7 @@ with Progress(console=console, transient=True) as progress:
 
 # sending to musi...
 with Progress(console=console, transient=True) as progress:
-    task_sending_to_musi = progress.add_task("[orange]Sending to Musi...", advance=1, total=4)
+    task_sending_to_musi = progress.add_task("[orange]Sending to Musi...", advance=1, total=5)
 
     for spotify_playlist in spotify_playlists:
         playlist_name = spotify_playlist["name"]
@@ -251,11 +269,22 @@ with Progress(console=console, transient=True) as progress:
 
         # immutable. If a playlist with the exact same params are made it will map to the same item in the dict.
         playlist = Playlist(playlist_name, playlist_cover_url)
+        logger.debug(f"{playlist=}")
         spotify_tracks = spotify_playlist_tracks[playlist_name]
 
         for spotify_track in spotify_tracks:
             track = search(spotify_track, cache_only=True)
+            if not track:
+                logger.warning(f"no track found for spotify_track: {spotify_track}")
+                continue
             playlists[playlist].append(track)
+
+    progress.advance(task_sending_to_musi)
+
+    for spotify_liked_song in spotify_liked_songs:
+        spotify_track = spotify_liked_song["track"]
+        track = search(spotify_track, cache_only=True)
+        library.append(track)
 
     progress.advance(task_sending_to_musi)
 
@@ -285,9 +314,9 @@ with Progress(console=console, transient=True) as progress:
 
     progress.advance(task_sending_to_musi)
 
-    logger.debug(f"{musi_library_items=}")
-    logger.debug(f"{musi_items=}")
-    logger.debug(f"{musi_playlists=}")
+    # logger.debug(f"musi_items={json.dumps(musi_items, indent=4)}")
+    # logger.debug(f"musi_playlists={json.dumps(musi_playlists, indent=4)}")
+    # logger.debug(f"musi_library_items={json.dumps(musi_library_items, indent=4)}")
 
     payload = {
         "library": {"ot": "custom", "items": musi_library_items, "name": "My Library", "date": time.time()},
