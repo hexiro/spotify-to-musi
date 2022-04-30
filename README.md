@@ -14,7 +14,7 @@ so I created this app to transfer songs between the two.
    ![Dashboard](./.github/assets/dashboard.png)
 2. Choose an app name and accept the terms and conditions. \
    ![CREATE AN APP](./.github/assets/create-an-app.png)
-3. Set callback to https://example.com/callback \
+3. Set callback to https://example.com/callback/ \
    ![Set Callback](./.github/assets/set-callback.png)
 4. View Client ID and Client Secret \
    ![SHOW CLIENT SECRET](./.github/assets/show-client-secret.png)
