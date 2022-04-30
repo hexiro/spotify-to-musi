@@ -125,7 +125,7 @@ def search(spotify_track: SpotifyTrack, cache_only: bool = False) -> Track | Non
     try:
         artist = spotify_track["artists"][0]["name"]
         song = spotify_track["name"]
-    except KeyError:
+    except (KeyError, TypeError):
         return None
 
     search_query = f"{artist} - {song} (Offical Audio)"
