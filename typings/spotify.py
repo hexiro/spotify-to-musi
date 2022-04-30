@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TypedDict, Optional
+from typing import TypedDict
 
 
 # --- all --- #
+
 
 class SpotifyExternalUrls(TypedDict):
     spotify: str
@@ -25,18 +26,18 @@ class SpotifyArtist(TypedDict):
 
 
 class SpotifyAlbum(TypedDict):
-    album_type: str
+    album_type: str | None
     artists: list[SpotifyArtist]
     external_urls: SpotifyExternalUrls
-    href: str
-    id: str
+    href: str | None
+    id: str | None
     images: list[SpotifyImage]
-    name: str
-    release_date: str
-    release_date_precision: str
-    total_tracks: int
+    name: str | None
+    release_date: str | None
+    release_date_precision: str | None
+    total_tracks: int  # might not exist if is_local?
     type: str
-    uri: str
+    uri: str | None
 
 
 class SpotifyTrack(TypedDict):
@@ -44,17 +45,17 @@ class SpotifyTrack(TypedDict):
     artists: list[SpotifyArtist]
     disc_number: int
     duration_ms: int
-    episode: bool  # optional
+    episode: bool  # might not exist always?
     explicit: bool
     external_ids: SpotifyExternalIds
     external_urls: SpotifyExternalUrls
-    href: str
-    id: str
+    href: str | None
+    id: str | None
     is_local: bool
     name: str
     popularity: int
-    preview_url: Optional[str]
-    track: bool  # optional
+    preview_url: str | None
+    track: bool  # might not exist if is_local?
     track_number: int
     type: str
     uri: str
@@ -110,7 +111,7 @@ class SpotifyExternalIds(TypedDict):
 
 
 class SpotifyVideoThumbnail(TypedDict):
-    url: Optional[str]
+    url: str | None
 
 
 class SpotifyPlaylistItem(TypedDict):
@@ -123,6 +124,7 @@ class SpotifyPlaylistItem(TypedDict):
 
 
 # --- liked songs --- #
+
 
 class SpotifyArtistsItem(TypedDict):
     external_urls: SpotifyExternalUrls

@@ -121,7 +121,8 @@ def search(spotify_track: SpotifyTrack, cache_only: bool = False) -> Track | Non
     """
     search cache and if not found search youtube.
     """
-
+    if spotify_track["is_local"]:
+        return None
     try:
         artist = spotify_track["artists"][0]["name"]
         song = spotify_track["name"]
