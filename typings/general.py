@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
-    from typehints.musi import MusiVideo, MusiItem
+    from typings.musi import MusiVideo, MusiItem
 
 
 @dataclass(frozen=True, eq=True)
