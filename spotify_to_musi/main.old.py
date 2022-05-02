@@ -129,12 +129,12 @@ def search(spotify_track: SpotifyTrack, cache_only: bool = False) -> Track | Non
     except (KeyError, TypeError):
         return None
 
-    search_query = f"{artist} - {song} (Offical Audio)"
+    search_query = f"{artist} - {song} (Official Audio)"
     logger.info(f"searching for track: artist={artist} song={song}")
-    track: Track | None = search_cache(artist, song)
+    track: Track | None = search_cache_for_track(artist, song)
 
     if not track and not cache_only:
-        track = search_youtube(artist, song, search_query)
+        track = search_youtube_for_track(artist, song, search_query)
 
     if not track:
         return
@@ -143,7 +143,7 @@ def search(spotify_track: SpotifyTrack, cache_only: bool = False) -> Track | Non
     return track
 
 
-def search_cache(artist: str, song: str) -> Track | None:
+def search_cache_for_track(artist: str, song: str) -> Track | None:
     logger.debug(f"Searching cache for artist, {artist!r} and name, {song!r}")
     search_cache = [e for e in tracks if (e.artist == artist and e.song == song)]
     if not any(search_cache):
@@ -154,7 +154,7 @@ def search_cache(artist: str, song: str) -> Track | None:
     return cached_song
 
 
-def search_youtube(artist: str, song: str, search_query: str) -> Track:
+def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track:
     def parse_duration(duration: str) -> int:
         print(f"{duration=}")
         map = {
