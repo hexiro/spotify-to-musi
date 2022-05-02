@@ -10,8 +10,6 @@ import time
 from typing import TYPE_CHECKING
 import uuid
 
-from general import Playlist, Track
-from musi import MusiBackupResponse
 import requests
 from requests_toolbelt import MultipartEncoder
 import rich_click as click
@@ -19,14 +17,15 @@ import youtubesearchpython
 import spotipy
 from rich.progress import Progress
 
+from .typings.general import Playlist, Track
 from .cache import get_cached_tracks, patch_spotify_secrets
 from .paths import spotify_cache_path
 
 if TYPE_CHECKING:
-    from ..typings.general import LikedSongs
-    from ..typings.musi import MusiItem, MusiPlaylist, MusiVideo
-    from ..typings.spotify import SpotifyPlaylistItem
-    from ..typings.spotify import SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
+    from .typings.general import LikedSongs
+    from .typings.musi import MusiItem, MusiPlaylist, MusiVideo, MusiBackupResponse
+    from .typings.spotify import SpotifyPlaylistItem
+    from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
 
 console = click.rich_click._get_rich_console()
 logger = logging.getLogger(__name__)
@@ -55,7 +54,8 @@ def spotify_track_to_track(spotify_track: SpotifyTrack) -> Track | None:
     try:
         artist = spotify_track["artists"][0]["name"]
         song = spotify_track["name"]
-    except (KeyError, TypeError):
+    except (KeyError, TypeError) as exc:
+        print(f"{exc=}")
         return None
     return Track(artist, song)
 
@@ -85,6 +85,9 @@ def get_spotify_playlist_tracks(spotify_playlists: list[SpotifyPlaylist]) -> lis
             if not track:
                 continue
             pl.tracks.append(track)
+        playlists.append(pl)
+
+    console.print(f"{playlists=}", markup=True)
 
     return playlists
 
@@ -189,25 +192,30 @@ def query_spotify(
 def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
     with Progress(console=console, transient=True) as progress:
         task_searching_youtube = progress.add_task("[red]Searching YouTube...", start=False, advance=1)
-        spotify_tracks_to_search: queue.Queue[Track] = queue.Queue(maxsize=0)
+        tracks_to_search: queue.Queue[Track] = queue.Queue(maxsize=0)
+        all_tracks: list[Track] = []
 
         for playlist in playlists:
+            console.print(f"{playlist=} {playlist.tracks=}", highlight=True)
             for track in playlist.tracks:
-                spotify_tracks_to_search.put(track)
+                tracks_to_search.put(track)
+                all_tracks.append(track)
 
+        console.print(f"{liked_songs=}", highlight=True)
         for track in liked_songs:
-            spotify_tracks_to_search.put(track)
+            tracks_to_search.put(track)
+            all_tracks.append(track)
 
-        logger.debug(f"{spotify_tracks_to_search.qsize()=}")
-        progress.update(task_searching_youtube, total=spotify_tracks_to_search.qsize())
+        console.print(f"{tracks_to_search.qsize()=} {len(all_tracks)=}", highlight=True)
+        progress.update(task_searching_youtube, total=tracks_to_search.qsize())
         progress.start_task(task_searching_youtube)
 
         def search_and_advance():
             thread = threading.current_thread()
-            while spotify_tracks_to_search.qsize() > 0:
+            while tracks_to_search.qsize() > 0:
                 if not thread.is_alive():
                     return
-                track = spotify_tracks_to_search.get()
+                track = tracks_to_search.get()
                 if not track:
                     continue
                 load_track_data(track)
@@ -216,7 +224,7 @@ def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
                 if track:
                     tracks.append(track)
                 progress.advance(task_searching_youtube)
-                spotify_tracks_to_search.task_done()
+                tracks_to_search.task_done()
 
         # python threading w/o blocking KeyboardInterrupt
         # reference: http://gregoryzynda.com/python/developer/threading/2018/12/21/interrupting-python-threads.html
@@ -309,6 +317,15 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
 def transfer_spotify_to_musi(
     spotify_liked_songs: list[SpotifyLikedSong], spotify_playlists: list[SpotifyPlaylist]
 ) -> None:
+
+    # print(f"{len(spotify_liked_songs)=} {len(spotify_playlists)=}")
+
+    # print("querying spotify...")
     liked_songs, playlists = query_spotify(spotify_liked_songs, spotify_playlists)
+    # print(f"{liked_songs=} {playlists=}")
+    # print("searching youtube...")
     search_youtube(liked_songs, playlists)
+    # print(f"{liked_songs=} {playlists=}")
+    # print("uploading to musi...")
     code = upload_to_musi(liked_songs, playlists)
+    console.print(f"[red]Success! use code, [bold]{code}[/bold] on Musi to restore your songs from Spotify.")

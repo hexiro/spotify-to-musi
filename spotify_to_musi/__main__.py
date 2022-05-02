@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-import pathlib
+from typing import TYPE_CHECKING
+
 import rich_click as click
-from rich.style import Style
-from spotify_to_musi.cache import store_spotify_secrets
-from spotify_to_musi.main import get_spotify
 
-from spotify_to_musi.paths import app_data, spotify_cache_path
+from .cache import store_spotify_secrets
+from .main import get_spotify, transfer_spotify_to_musi
+from .paths import app_data, spotify_cache_path
 
-import spotipy
+
+if TYPE_CHECKING:
+    from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist
+
 
 click.rich_click.STYLE_OPTION = "bold magenta"
 click.rich_click.STYLE_SWITCH = "bold blue"
@@ -36,7 +39,9 @@ def cli():
 def transfer(user: bool, playlist: list[str]):
     """Transfer songs from Spotify to Musi."""
     spotify = get_spotify()
-    print(f"{spotify=}")
+    spotify_liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks()["items"]
+    spotify_playlists: list[SpotifyPlaylist] = spotify.current_user_playlists()["items"]
+    transfer_spotify_to_musi(spotify_liked_songs, spotify_playlists)
 
 
 @cli.command()

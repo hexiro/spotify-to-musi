@@ -197,7 +197,7 @@ def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track
 with Progress(console=console, transient=True) as progress:
     task_query_spotify = progress.add_task("[green]Querying Spotify...", total=2)
 
-    spotify_liked_songs = spotify.current_user_saved_tracks()["items"]
+    spotify_liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks()["items"]
 
     for liked_song in spotify_liked_songs:
         spotify_track = liked_song["track"]
@@ -205,7 +205,7 @@ with Progress(console=console, transient=True) as progress:
         spotify_liked_songs_tracks.append(spotify_track)
 
     progress.advance(task_query_spotify)
-    spotify_playlists = spotify.current_user_playlists()["items"]
+    spotify_playlists: list[SpotifyPlaylist] = spotify.current_user_playlists()["items"]
 
     for spotify_playlist in spotify_playlists:
         playlist_id = spotify_playlist["id"]

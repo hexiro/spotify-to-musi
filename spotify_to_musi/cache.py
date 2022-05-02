@@ -3,10 +3,10 @@ import os
 from typing import TYPE_CHECKING, TypedDict
 
 from .paths import spotify_data_path, data_cache_path
-from ..typings.general import Track
+from .typings.general import Track
 
 if TYPE_CHECKING:
-    from ..typings.general import TrackDict
+    from .typings.general import TrackDict
 
 
 def get_cached_tracks() -> list[Track]:
