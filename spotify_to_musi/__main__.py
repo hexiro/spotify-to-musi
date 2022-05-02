@@ -1,8 +1,14 @@
 from __future__ import annotations
+import logging
+import sys
 
 from typing import TYPE_CHECKING
+from rich import print_json
 
 import rich_click as click
+import spotipy.exceptions
+
+from spotify_to_musi.commons import SPOTIFY_ID_REGEX
 
 from .cache import store_spotify_secrets
 from .main import get_spotify, transfer_spotify_to_musi
@@ -19,6 +25,9 @@ click.rich_click.STYLE_METAVAR = "bold red"
 click.rich_click.MAX_WIDTH = 75
 
 console = click.rich_click._get_rich_console()
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(level="WARNING", stream=sys.stdout)
 
 
 @click.group()
@@ -39,8 +48,21 @@ def cli():
 def transfer(user: bool, playlist: list[str]):
     """Transfer songs from Spotify to Musi."""
     spotify = get_spotify()
-    spotify_liked_songs: list[SpotifyLikedSong] = spotify.current_user_saved_tracks()["items"]
-    spotify_playlists: list[SpotifyPlaylist] = spotify.current_user_playlists()["items"]
+    spotify_liked_songs: list[SpotifyLikedSong] = []
+    spotify_playlists: list[SpotifyPlaylist] = []
+    if user:
+        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])
+        spotify_playlists.extend(spotify.current_user_playlists()["items"])
+    for playlist_link in playlist:
+        match = SPOTIFY_ID_REGEX.match(playlist_link)
+        playlist_id = match.group("id") if match else playlist_link
+        try:
+            pl = spotify.playlist(playlist_id)
+        except spotipy.exceptions.SpotifyException:
+            logger.warning(f"Unable to find playlist: {playlist_link}")
+            continue
+        spotify_playlists.append(pl)
+        
     transfer_spotify_to_musi(spotify_liked_songs, spotify_playlists)
 
 
