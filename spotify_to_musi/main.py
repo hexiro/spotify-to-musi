@@ -18,12 +18,13 @@ import spotipy
 from rich.progress import Progress
 
 from .typings.general import Playlist, Track
-from .cache import get_cached_tracks, patch_spotify_secrets
+from .cache import cache_tracks, get_cached_tracks, patch_spotify_secrets
 from .paths import spotify_cache_path
 
 if TYPE_CHECKING:
     from .typings.general import LikedSongs
     from .typings.musi import MusiItem, MusiPlaylist, MusiVideo, MusiBackupResponse
+    from .typings.youtube import YoutubeResult
     from .typings.spotify import SpotifyPlaylistItem
     from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
 
@@ -87,8 +88,6 @@ def get_spotify_playlist_tracks(spotify_playlists: list[SpotifyPlaylist]) -> lis
             pl.tracks.append(track)
         playlists.append(pl)
 
-    console.print(f"{playlists=}", markup=True)
-
     return playlists
 
 
@@ -114,9 +113,8 @@ def search_cache_for_track(artist: str, song: str) -> Track | None:
     return cached_song
 
 
-def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track:
+def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track | None:
     def parse_duration(duration: str) -> int:
-        print(f"{duration=}")
         map = {
             0: "seconds",
             1: "minutes",
@@ -128,13 +126,16 @@ def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track
             time_map[unit] = int(metric)
         t = datetime.timedelta(**time_map)
         seconds = math.ceil(t.total_seconds())
-        print(f"{duration=} {seconds=}")
         return seconds
 
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
     search = youtubesearchpython.VideosSearch(search_query, limit=1)
-    result: YoutubeResult = search.result()["result"][0]  # type: ignore
+    try:
+        result: YoutubeResult = search.result()["result"][0]  # type: ignore
+    except IndexError:
+        print(f"couldn't find song for: {search_query!r}")
+        return None
 
     logger.debug(f"{result=}")
 
@@ -165,7 +166,7 @@ def load_track_data(track: Track, cache_only: bool = False) -> None:
 
     searched_track: Track | None = search_cache_for_track(artist, song)
 
-    if not track and not cache_only:
+    if not searched_track and not cache_only:
         searched_track = search_youtube_for_track(artist, song, search_query)
 
     if not searched_track:
@@ -175,6 +176,7 @@ def load_track_data(track: Track, cache_only: bool = False) -> None:
 
     track.duration = searched_track.duration
     track.video_id = searched_track.video_id
+    assert track.loaded
 
 
 def query_spotify(
@@ -196,12 +198,10 @@ def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
         all_tracks: list[Track] = []
 
         for playlist in playlists:
-            console.print(f"{playlist=} {playlist.tracks=}", highlight=True)
             for track in playlist.tracks:
                 tracks_to_search.put(track)
                 all_tracks.append(track)
 
-        console.print(f"{liked_songs=}", highlight=True)
         for track in liked_songs:
             tracks_to_search.put(track)
             all_tracks.append(track)
@@ -317,15 +317,21 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
 def transfer_spotify_to_musi(
     spotify_liked_songs: list[SpotifyLikedSong], spotify_playlists: list[SpotifyPlaylist]
 ) -> None:
-
-    # print(f"{len(spotify_liked_songs)=} {len(spotify_playlists)=}")
-
-    # print("querying spotify...")
+    
+    # TODO: handle error handling in yt search better.
+    
     liked_songs, playlists = query_spotify(spotify_liked_songs, spotify_playlists)
-    # print(f"{liked_songs=} {playlists=}")
-    # print("searching youtube...")
     search_youtube(liked_songs, playlists)
-    # print(f"{liked_songs=} {playlists=}")
-    # print("uploading to musi...")
+    
+    all_tracks = [t for t in liked_songs]
+    for pl in playlists:
+        all_tracks.extend([track for track in pl.tracks])
+
+    cache_tracks(all_tracks)
+
+    not_loaded = [t for t in all_tracks if not t.loaded]
+    print(f"{len(not_loaded)=} {len(all_tracks)=}")
+    print(f"{not_loaded=}")
+
     code = upload_to_musi(liked_songs, playlists)
     console.print(f"[red]Success! use code, [bold]{code}[/bold] on Musi to restore your songs from Spotify.")
