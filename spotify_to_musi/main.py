@@ -5,6 +5,7 @@ import json
 import logging
 import math
 import queue
+import sys
 import threading
 import datetime
 import time
@@ -16,7 +17,7 @@ import rich
 import rich_click as click
 import youtubesearchpython
 import spotipy
-from rich.progress import Progress
+from rich.progress import Progress, TaskID
 from requests_toolbelt import MultipartEncoder
 
 from .typings.core import Playlist, Track, TrackData
@@ -61,7 +62,9 @@ def spotify_track_to_track(spotify_track: SpotifyTrack) -> Track | None:
     return Track(artist, song)
 
 
-def get_spotify_playlist_tracks(spotify_playlists: list[SpotifyPlaylist]) -> list[Playlist]:
+def get_spotify_playlist_tracks(
+    progress: Progress, task: TaskID, spotify_playlists: list[SpotifyPlaylist]
+) -> list[Playlist]:
     spotify = get_spotify()
     playlists: list[Playlist] = []
 
@@ -73,10 +76,12 @@ def get_spotify_playlist_tracks(spotify_playlists: list[SpotifyPlaylist]) -> lis
         pl = Playlist(playlist_name, playlist_id, playlist_cover_url)
 
         results = spotify.playlist_items(playlist_id)
+        progress.advance(task)
         items: list[SpotifyPlaylistItem] = results["items"]
 
         while results["next"]:  # type: ignore
             results = spotify.next(results)
+            progress.advance(task)
             items.extend(results["items"])  # type: ignore
 
         for item in items:
@@ -140,7 +145,7 @@ def search_youtube_for_track(track: Track) -> TrackData | None:
     try:
         result: YoutubeResult = search.result()["result"][0]  # type: ignore
     except IndexError:
-        logger.warning(f"can't find YouTube video for song: \"{track.artist} - {track.song}\"")
+        logger.warning(f'can\'t find YouTube video for song: "{track.artist} - {track.song}"')
         return None
 
     logger.debug(f"{result=}")
@@ -182,12 +187,17 @@ def load_track_data(track: Track) -> None:
 def query_spotify(
     liked_songs: list[SpotifyLikedSong], spotify_playlists: list[SpotifyPlaylist]
 ) -> tuple[LikedSongs, list[Playlist]]:
+    total = 1  # 1 call for liked_songs + 1 call for every 100 tracks in a playlist
+
+    for playlist in spotify_playlists:
+        calls_needed = math.ceil(playlist["tracks"]["total"] / 100)
+        total += calls_needed
+
     with Progress(console=console, transient=True) as progress:
-        task_query_spotify = progress.add_task("[green]Querying Spotify...", total=2)
+        task_query_spotify = progress.add_task("[green]Querying Spotify...", total=total)
         spotify_liked_songs_tracks = get_spotify_liked_songs_tracks(liked_songs)
         progress.advance(task_query_spotify)
-        spotify_playlist_tracks = get_spotify_playlist_tracks(spotify_playlists)
-        progress.advance(task_query_spotify)
+        spotify_playlist_tracks = get_spotify_playlist_tracks(progress, task_query_spotify, spotify_playlists)
     return spotify_liked_songs_tracks, spotify_playlist_tracks
 
 
