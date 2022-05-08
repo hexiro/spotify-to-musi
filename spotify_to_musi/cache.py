@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import json
 import os
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, Iterable
+
 
 from .paths import spotify_data_path, data_cache_path
-from .typings.general import Track
+from .typings.core import Track
 
 if TYPE_CHECKING:
-    from .typings.general import TrackDict
+    from .typings.core import TrackDict
 
 
 def get_cached_tracks() -> list[Track]:
@@ -16,19 +19,19 @@ def get_cached_tracks() -> list[Track]:
             with open(data_cache_path) as file:
                 cached_data: list[TrackDict] = json.load(file)
             for track in cached_data:
-                deserialized = Track(**track, is_from_cache=True)
+                deserialized = Track(**track)
                 tracks.append(deserialized)
         except json.JSONDecodeError:
             pass
     return tracks
 
 
-def cache_tracks(tracks: list[Track]) -> None:
+def cache_tracks(tracks: Iterable[Track]) -> None:
     cache_items: list[TrackDict] = []
     for track in tracks:
-        track_dict = track.to_dict()
-        if not track_dict:
+        if not track.loaded:
             continue
+        track_dict = track.to_dict()
         cache_items.append(track_dict)
     with open(data_cache_path, "w") as file:
         json.dump(cache_items, file, indent=4)

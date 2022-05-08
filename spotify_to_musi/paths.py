@@ -33,6 +33,6 @@ assert app_data is not None
 
 spotify_to_musi_path = app_data / "spotify-to-musi"
 spotify_to_musi_path.mkdir(exist_ok=True)
-spotify_cache_path = app_data / "spotify.cache.json"
-spotify_data_path = app_data / "spotify.data.json"
-data_cache_path = app_data / "data.cache.json"
+spotify_cache_path = spotify_to_musi_path / "spotify.cache.json"
+spotify_data_path = spotify_to_musi_path / "spotify.data.json"
+data_cache_path = spotify_to_musi_path / "data.cache.json"

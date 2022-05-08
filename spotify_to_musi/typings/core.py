@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, NamedTuple, TypedDict
 
 
 if TYPE_CHECKING:
-    from spotify import SpotifyTrack
     from typing import TypeAlias
     from typings.musi import MusiVideo, MusiItem
 
@@ -29,13 +28,13 @@ class TrackDict(TypedDict):
     video_id: str
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class Track:
     artist: str
     song: str
-    duration: int = -1  # in seconds
-    video_id: str | None = None
-    is_from_cache: bool = False
+    duration: int = field(default=-1, hash=False, compare=False)  # in seconds
+    video_id: str | None = field(default=None, hash=False, compare=False)
+    creation_time: float = field(default=-1, hash=False, compare=False)
 
     def __post_init__(self):
         self.creation_time = time.time()
@@ -56,7 +55,7 @@ class Track:
             "song": self.song,
             "duration": self.duration,
             "video_id": self.video_id,
-        }  # type: ignore
+        } 
 
     def to_musi_video(self) -> MusiVideo:
         if self.duration == -1 or self.video_id is None:
@@ -77,6 +76,11 @@ class Track:
             "pos": position,
             "video_id": self.video_id,
         }
+
+
+class TrackData(NamedTuple):
+    duration: int
+    video_id: str
 
 
 LikedSongs: TypeAlias = list[Track]

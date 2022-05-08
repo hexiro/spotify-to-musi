@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import functools
 import json
 import logging
@@ -11,32 +12,32 @@ from typing import TYPE_CHECKING
 import uuid
 
 import requests
-from requests_toolbelt import MultipartEncoder
+import rich
 import rich_click as click
 import youtubesearchpython
 import spotipy
 from rich.progress import Progress
+from requests_toolbelt import MultipartEncoder
 
-from .typings.general import Playlist, Track
+from .typings.core import Playlist, Track, TrackData
 from .cache import cache_tracks, get_cached_tracks, patch_spotify_secrets
 from .paths import spotify_cache_path
 
 if TYPE_CHECKING:
-    from .typings.general import LikedSongs
+    from .typings.core import LikedSongs
     from .typings.musi import MusiItem, MusiPlaylist, MusiVideo, MusiBackupResponse
     from .typings.youtube import YoutubeResult
     from .typings.spotify import SpotifyPlaylistItem
     from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
 
-console = click.rich_click._get_rich_console()
+console = rich.get_console()
 logger = logging.getLogger(__name__)
-tracks: list[Track] = get_cached_tracks()
+cached_tracks: list[Track] = get_cached_tracks()
 
 
 @functools.lru_cache()
 def get_spotify() -> spotipy.Spotify:
     """Returns spotify instance"""
-    patch_spotify_secrets()
     cache_handler = spotipy.CacheFileHandler(cache_path=str(spotify_cache_path))
     spotify_oauth = spotipy.SpotifyOAuth(
         scope="user-library-read playlist-read-collaborative playlist-read-private",
@@ -55,15 +56,13 @@ def spotify_track_to_track(spotify_track: SpotifyTrack) -> Track | None:
     try:
         artist = spotify_track["artists"][0]["name"]
         song = spotify_track["name"]
-    except (KeyError, TypeError) as exc:
-        print(f"{exc=}")
+    except (KeyError, TypeError):
         return None
     return Track(artist, song)
 
 
 def get_spotify_playlist_tracks(spotify_playlists: list[SpotifyPlaylist]) -> list[Playlist]:
     spotify = get_spotify()
-    # spotify_playlist_tracks: dict[str, list[SpotifyTrack]] = {}
     playlists: list[Playlist] = []
 
     for spotify_playlist in spotify_playlists:
@@ -103,17 +102,23 @@ def get_spotify_liked_songs_tracks(spotify_liked_songs: list[SpotifyLikedSong]) 
     return tracks
 
 
-def search_cache_for_track(artist: str, song: str) -> Track | None:
-    logger.debug(f"Searching cache for artist, {artist!r} and name, {song!r}")
-    search_cache = [x for x in tracks if (x.artist == artist and x.song == song)]
-    if not any(search_cache):
+def search_cache_for_track(track: Track) -> TrackData | None:
+    logger.debug(f"Searching cache for artist, {track.artist!r} and name, {track.song!r}")
+    try:
+        index = cached_tracks.index(track)
+        cached_track = cached_tracks[index]
+    except ValueError:
         return None
-    cached_song = search_cache[0]
-    logger.debug(f"found in cache!, {cached_song=}")
-    return cached_song
+    logger.debug(f"found in cache!, {cached_track=}")
+
+    duration = cached_track.duration
+    video_id = cached_track.video_id
+    if not video_id or duration == -1:
+        return None
+    return TrackData(duration, video_id)
 
 
-def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track | None:
+def search_youtube_for_track(track: Track) -> TrackData | None:
     def parse_duration(duration: str) -> int:
         map = {
             0: "seconds",
@@ -128,13 +133,14 @@ def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track
         seconds = math.ceil(t.total_seconds())
         return seconds
 
+    search_query = f"{track.artist} - Topic - {track.song} (Official Audio)"
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
     search = youtubesearchpython.VideosSearch(search_query, limit=1)
     try:
         result: YoutubeResult = search.result()["result"][0]  # type: ignore
     except IndexError:
-        print(f"couldn't find song for: {search_query!r}")
+        logger.warning(f"can't find YouTube video for song: \"{track.artist} - {track.song}\"")
         return None
 
     logger.debug(f"{result=}")
@@ -144,38 +150,32 @@ def search_youtube_for_track(artist: str, song: str, search_query: str) -> Track
 
     logger.debug(f"Done! {title=!r} {channel_name=!r}")
 
-    track = Track(
-        artist=artist,
-        song=song,
-        duration=parse_duration(result["duration"]),
-        video_id=result["id"],
-    )
-    tracks.append(track)
-    return track
+    duration = parse_duration(result["duration"])
+    video_id = result["id"]
+    return TrackData(duration, video_id)
 
 
-def load_track_data(track: Track, cache_only: bool = False) -> None:
+def load_track_data(track: Track) -> None:
     """
     search cache and if not found search youtube.
     """
     artist = track.artist
     song = track.song
 
-    search_query = f"{artist} - {song} (Official Audio)"
-    logger.info(f"searching for track: artist={artist} song={song}")
+    logger.info(f"searching for track: {track!r}")
 
-    searched_track: Track | None = search_cache_for_track(artist, song)
+    track_data: TrackData | None = search_cache_for_track(track)
 
-    if not searched_track and not cache_only:
-        searched_track = search_youtube_for_track(artist, song, search_query)
+    if not track_data:
+        track_data = search_youtube_for_track(track)
 
-    if not searched_track:
+    if not track_data:
         return
 
-    logger.info(f"done! title={track.title} video_id={track.video_id} artist={artist} song={song}")
+    logger.info(f"done! {track=!r} video_id={track.video_id} artist={artist} song={song}")
 
-    track.duration = searched_track.duration
-    track.video_id = searched_track.video_id
+    track.duration = track_data.duration
+    track.video_id = track_data.video_id
     assert track.loaded
 
 
@@ -206,7 +206,6 @@ def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
             tracks_to_search.put(track)
             all_tracks.append(track)
 
-        console.print(f"{tracks_to_search.qsize()=} {len(all_tracks)=}", highlight=True)
         progress.update(task_searching_youtube, total=tracks_to_search.qsize())
         progress.start_task(task_searching_youtube)
 
@@ -222,7 +221,7 @@ def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
                 # adding to list from multiple threads --
                 # not sure if this has side-effects
                 if track:
-                    tracks.append(track)
+                    cached_tracks.append(track)
                 progress.advance(task_searching_youtube)
                 tracks_to_search.task_done()
 
@@ -317,21 +316,24 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
 def transfer_spotify_to_musi(
     spotify_liked_songs: list[SpotifyLikedSong], spotify_playlists: list[SpotifyPlaylist]
 ) -> None:
-    
+
     # TODO: handle error handling in yt search better.
-    
+
     liked_songs, playlists = query_spotify(spotify_liked_songs, spotify_playlists)
     search_youtube(liked_songs, playlists)
-    
-    all_tracks = [t for t in liked_songs]
+
+    all_tracks = set(cached_tracks)
+    for liked_song in liked_songs:
+        all_tracks.add(liked_song)
     for pl in playlists:
-        all_tracks.extend([track for track in pl.tracks])
+        for track in pl.tracks:
+            all_tracks.add(track)
 
     cache_tracks(all_tracks)
 
-    not_loaded = [t for t in all_tracks if not t.loaded]
-    print(f"{len(not_loaded)=} {len(all_tracks)=}")
-    print(f"{not_loaded=}")
+    if not liked_songs and not playlists:
+        console.print("[red]No tracks to upload.[/red]")
+        return
 
     code = upload_to_musi(liked_songs, playlists)
-    console.print(f"[red]Success! use code, [bold]{code}[/bold] on Musi to restore your songs from Spotify.")
+    console.print(f"[green]Success! use code, [bold]{code}[/bold] on Musi to restore your songs from Spotify.[/green]")
