@@ -24,6 +24,7 @@ setup(
     },
     python_requires=">=3.7",
     license="GPLv3",
+    zip_safe=False,
     classifiers=[
         "Natural Language :: English",
         "Environment :: Console",
