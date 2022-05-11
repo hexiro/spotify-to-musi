@@ -86,6 +86,8 @@ def get_spotify_playlist_tracks(
 
         for item in items:
             spotify_track = item["track"]
+            if not spotify_track:
+                continue
             track = spotify_track_to_track(spotify_track)
             if not track:
                 continue

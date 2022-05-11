@@ -119,7 +119,7 @@ class SpotifyPlaylistItem(TypedDict):
     added_by: SpotifyPlaylistAddedBy
     is_local: bool
     primary_color: None
-    track: SpotifyTrack
+    track: SpotifyTrack | None
     video_thumbnail: SpotifyVideoThumbnail
 
 
