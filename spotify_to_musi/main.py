@@ -1,3 +1,4 @@
+"""Implementation of main spotify-to-musi logic."""
 from __future__ import annotations
 
 import functools
@@ -52,7 +53,7 @@ def get_spotify() -> spotipy.Spotify:
 
 
 def spotify_track_to_track(spotify_track: SpotifyTrack) -> Track | None:
-    if spotify_track["is_local"]:
+    if spotify_track.get("is_local"):
         return None
     try:
         artist = spotify_track["artists"][0]["name"]

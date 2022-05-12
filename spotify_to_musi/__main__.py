@@ -1,3 +1,4 @@
+"""Entrypoint and CLI handler."""
 from __future__ import annotations
 
 import logging
@@ -37,11 +38,11 @@ def cli():
 
 @cli.command()
 @click.option(
-    "-u/-nu",
-    "--user/--no-user",
+    "-u",
+    "--user",
     is_flag=True,
     help="Transfer liked songs and playlists of authorized user.",
-    default=True,
+    default=False,
     show_default=True,
 )
 @click.option("-pl", "--playlist", help="Transfer Spotify playlist(s) by URL.", multiple=True, type=str)

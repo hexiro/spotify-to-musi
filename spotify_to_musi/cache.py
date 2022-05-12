@@ -1,3 +1,4 @@
+"""module to handle fs interactions."""
 from __future__ import annotations
 
 import json
