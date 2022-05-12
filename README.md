@@ -1,15 +1,17 @@
 # spotify-to-musi
+
 > Transfer your [Spotify](https://spotify.com) playlists to [Musi](https://feelthemusi.com).
 
 ![banner](./.github/assets/banner.png)
- 
 
 # Why Musi?
+
 Musi allows you to listen to any song (video) from YouTube without being interrupted with ads like with Spotify.
 As someone who doesn't have a music streaming subscription I prefer to use Spotify on Desktop and Musi on mobile,
 so I created this app to transfer songs between the two.
 
 # Spotify API
+
 1. Go to https://developer.spotify.com/dashboard/ \
    ![Dashboard](./.github/assets/dashboard.png)
 2. Choose an app name and accept the terms and conditions. \
@@ -27,8 +29,14 @@ so I created this app to transfer songs between the two.
 8. Copy the URL of the page you were redirected to and paste it into the console of the program and enter
 
 # PyCharm Usage
-If you're running pycharm, make sure ```emulate terminal in output console``` is enabled<br>
+
+If you're running pycharm, make sure `emulate terminal in output console` is enabled<br>
 
 references:
-   - https://youtrack.jetbrains.com/issue/PY-43860 
-   - https://rich.readthedocs.io/en/latest/introductin.html
+
+- https://youtrack.jetbrains.com/issue/PY-43860
+- https://rich.readthedocs.io/en/latest/introductin.html
+
+
+# # TODO
+- use YouTube Music for search results
