@@ -51,7 +51,7 @@ class SpotifyTrack(TypedDict):
     external_urls: SpotifyExternalUrls
     href: str | None
     id: str | None
-    is_local: bool
+    is_local: bool  # might not exist always?
     name: str
     popularity: int
     preview_url: str | None
@@ -119,7 +119,7 @@ class SpotifyPlaylistItem(TypedDict):
     added_by: SpotifyPlaylistAddedBy
     is_local: bool
     primary_color: None
-    track: SpotifyTrack
+    track: SpotifyTrack | None
     video_thumbnail: SpotifyVideoThumbnail
 
 
