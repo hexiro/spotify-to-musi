@@ -126,35 +126,32 @@ def search_cache_for_track(track: Track) -> TrackData | None:
 
 
 def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | None:
-    def parse_duration(duration: str) -> int:
-        map = {
-            0: "seconds",
-            1: "minutes",
-            2: "hours",
-        }
-        time_map = {}
-        for index, metric in enumerate(reversed(duration.split(":"))):
-            unit = map[index]
-            time_map[unit] = int(metric)
-        t = datetime.timedelta(**time_map)
-        seconds = math.ceil(t.total_seconds())
-        return seconds
-
     search_query = f"{track.artist} - {track.song}"
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
     search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", ignore_spelling=True, limit=1)  # type: ignore
-    result = search[0]
+    
+    if not search:
+        logger.warning(f"No results found for track, {search_query!r}")
+        return
+    
+    result: YoutubeMusicSearch
+    for option in search:
+        if track.song.lower() in option["title"].lower() and option["isExplicit"]:
+            result = option
+            break
+    else:
+        result = search[0]
 
     logger.debug(f"{result=}")
 
     title: str = result["title"]
     artist: str = result["artists"][0]["name"]
-
-    logger.debug(f"Done! {title=!r} {artist=!r}")
-
     duration = result["duration_seconds"]
     video_id = result["videoId"]
+
+    logger.debug(f"Done! {title=!r} {artist=!r} {video_id=!r}")
+
     return TrackData(duration, video_id)
 
 
@@ -229,7 +226,7 @@ def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
                 load_track_data(track, yt_music)
                 # adding to list from multiple threads --
                 # not sure if this has side-effects
-                if track:
+                if track.loaded:
                     cached_tracks.append(track)
                 progress.advance(task_searching_youtube)
                 tracks_to_search.task_done()
