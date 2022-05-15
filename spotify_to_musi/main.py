@@ -6,31 +6,30 @@ import json
 import logging
 import math
 import queue
-import sys
 import threading
 import datetime
 import time
-from typing import TYPE_CHECKING
 import uuid
+from typing import TYPE_CHECKING
 
 import requests
 import rich
-import rich_click as click
-import youtubesearchpython
 import spotipy
+from ytmusicapi import YTMusic
 from rich.progress import Progress, TaskID
 from requests_toolbelt import MultipartEncoder
 
 from .typings.core import Playlist, Track, TrackData
-from .cache import cache_tracks, get_cached_tracks, patch_spotify_secrets
+from .cache import cache_tracks, get_cached_tracks
 from .paths import spotify_cache_path
 
 if TYPE_CHECKING:
     from .typings.core import LikedSongs
     from .typings.musi import MusiItem, MusiPlaylist, MusiVideo, MusiBackupResponse
-    from .typings.youtube import YoutubeResult
+    from .typings.youtube import YoutubeMusicSearch
     from .typings.spotify import SpotifyPlaylistItem
     from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
+
 
 console = rich.get_console()
 logger = logging.getLogger(__name__)
@@ -126,7 +125,7 @@ def search_cache_for_track(track: Track) -> TrackData | None:
     return TrackData(duration, video_id)
 
 
-def search_youtube_for_track(track: Track) -> TrackData | None:
+def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | None:
     def parse_duration(duration: str) -> int:
         map = {
             0: "seconds",
@@ -141,29 +140,25 @@ def search_youtube_for_track(track: Track) -> TrackData | None:
         seconds = math.ceil(t.total_seconds())
         return seconds
 
-    search_query = f"{track.artist} - Topic - {track.song} (Official Audio)"
+    search_query = f"{track.artist} - {track.song}"
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
-    search = youtubesearchpython.VideosSearch(search_query, limit=1)
-    try:
-        result: YoutubeResult = search.result()["result"][0]  # type: ignore
-    except IndexError:
-        logger.warning(f'can\'t find YouTube video for song: "{track.artist} - {track.song}"')
-        return None
+    search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", ignore_spelling=True, limit=1)  # type: ignore
+    result = search[0]
 
     logger.debug(f"{result=}")
 
     title: str = result["title"]
-    channel_name: str = result["channel"]["name"]
+    artist: str = result["artists"][0]["name"]
 
-    logger.debug(f"Done! {title=!r} {channel_name=!r}")
+    logger.debug(f"Done! {title=!r} {artist=!r}")
 
-    duration = parse_duration(result["duration"])
-    video_id = result["id"]
+    duration = result["duration_seconds"]
+    video_id = result["videoId"]
     return TrackData(duration, video_id)
 
 
-def load_track_data(track: Track) -> None:
+def load_track_data(track: Track, yt_music: YTMusic) -> None:
     """
     search cache and if not found search youtube.
     """
@@ -175,7 +170,7 @@ def load_track_data(track: Track) -> None:
     track_data: TrackData | None = search_cache_for_track(track)
 
     if not track_data:
-        track_data = search_youtube_for_track(track)
+        track_data = search_youtube_for_track(track, yt_music)
 
     if not track_data:
         return
@@ -224,13 +219,14 @@ def search_youtube(liked_songs: LikedSongs, playlists: list[Playlist]) -> None:
 
         def search_and_advance():
             thread = threading.current_thread()
+            yt_music = YTMusic()
             while tracks_to_search.qsize() > 0:
                 if not thread.is_alive():
                     return
                 track = tracks_to_search.get()
                 if not track:
                     continue
-                load_track_data(track)
+                load_track_data(track, yt_music)
                 # adding to list from multiple threads --
                 # not sure if this has side-effects
                 if track:

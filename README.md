@@ -36,7 +36,3 @@ references:
 
 - https://youtrack.jetbrains.com/issue/PY-43860
 - https://rich.readthedocs.io/en/latest/introductin.html
-
-
-# # TODO
-- use YouTube Music for search results

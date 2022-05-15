@@ -3,9 +3,19 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-class ViewCount(TypedDict):
-    text: str
-    short: str
+class Album(TypedDict):
+    name: str
+    id: str | None
+
+
+class Artist(TypedDict):
+    name: str
+    id: str | None
+
+
+class FeedbackTokens(TypedDict):
+    add: None
+    remove: None
 
 
 class Thumbnail(TypedDict):
@@ -14,34 +24,17 @@ class Thumbnail(TypedDict):
     height: int
 
 
-class DescriptionSnippet(TypedDict, total=False):
-    text: str
-    bold: bool  # optional. defaults to false
-
-
-class Channel(TypedDict):
-    name: str
-    id: str
-    thumbnails: list[Thumbnail]
-    link: str
-
-
-class Accessibility(TypedDict):
+class YoutubeMusicSearch(TypedDict):
+    category: str
+    resultType: str
     title: str
+    album: Album
+    feedbackTokens: FeedbackTokens
+    videoId: str
+    videoType: str
     duration: str
-
-
-class YoutubeResult(TypedDict):
-    type: str
-    id: str
-    title: str
-    publishedTime: str
-    duration: str
-    viewCount: ViewCount
+    year: None
+    artists: list[Artist]
+    duration_seconds: int
+    isExplicit: bool
     thumbnails: list[Thumbnail]
-    richThumbnail: Thumbnail
-    descriptionSnippet: list[DescriptionSnippet]
-    channel: Channel
-    accessibility: Accessibility
-    link: str
-    shelfTitle: None
