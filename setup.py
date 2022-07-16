@@ -8,7 +8,7 @@ with open("requirements.txt", encoding="utf8") as requirements_file:
 
 setup(
     name="spotify-to-musi",
-    version="1.0.0rc2",
+    version="1.0.0",
     description="Transfer your Spotify playlists to Musi.",
     long_description=readme,
     long_description_content_type="text/markdown",
