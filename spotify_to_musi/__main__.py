@@ -78,7 +78,12 @@ def setup():
     console.print(welcome_text, highlight=True, markup=True)
 
     def prompt(for_: str, default: str | None = None) -> str:
-        default_text = f" [{grey}][[i]{default}[/i]][/{grey}]" if default else ""
+        default_text: str = ""
+        if default:
+            if len(default) > 5:
+                mid_point = len(default) // 2
+                default = f"{default[:mid_point]}..."
+            default_text = f" [{grey}][[i]{default}[/i]][/{grey}]"
         text = f"[magenta]{for_}{default_text}[/magenta]: "
 
         res = console.input(text) or default
