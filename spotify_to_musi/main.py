@@ -19,7 +19,7 @@ from ytmusicapi import YTMusic
 from rich.progress import Progress, TaskID
 from requests_toolbelt import MultipartEncoder
 
-from spotify_to_musi.commons import SPOTIFY_ID_REGEX
+from spotify_to_musi.commons import SPOTIFY_ID_REGEX, compute_tracks_uuid
 
 from .typings.core import Playlist, Track, TrackData
 from .cache import cache_tracks, get_cached_tracks
@@ -301,9 +301,10 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
             "playlist_items": musi_items,
             "playlists": musi_playlists,
         }
+        tracks_uuid = compute_tracks_uuid(liked_songs, playlists)
         multipart_encoder = MultipartEncoder(
-            fields={"data": json.dumps(payload), "uuid": str(uuid.uuid4())},
-            boundary=f"Boundary+Musi{uuid.uuid4()}",
+            fields={"data": json.dumps(payload), "uuid": str(tracks_uuid)},
+            boundary=f"Boundary+Musi{tracks_uuid}",
         )
         headers = {
             "Content-Type": multipart_encoder.content_type,
@@ -355,6 +356,7 @@ def transfer_spotify_to_musi(user: bool, playlist: list[str]) -> None:
     for liked_song in liked_songs:
         all_tracks.add(liked_song)
     for pl in playlists:
+        pl.remove_unloaded_tracks()
         for track in pl.tracks:
             all_tracks.add(track)
 

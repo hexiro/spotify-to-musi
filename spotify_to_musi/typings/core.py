@@ -10,12 +10,23 @@ if TYPE_CHECKING:
     from typings.musi import MusiVideo, MusiItem
 
 
-@dataclass(frozen=True, eq=True)
+@dataclass(eq=True)
 class Playlist:
     name: str
     id: str
     cover_url: str
     tracks: list[Track] = field(default_factory=list, init=False, repr=False, compare=False)
+
+    def remove_unloaded_tracks(self) -> None:
+        self.tracks = [track for track in self.tracks if track.loaded]
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "id": self.id,
+            "cover_url": self.cover_url,
+            "tracks": [track.to_dict() for track in self.tracks],
+        }
 
 
 # youtube video and data about the spotify artist that was used to find it.
@@ -55,7 +66,7 @@ class Track:
             "song": self.song,
             "duration": self.duration,
             "video_id": self.video_id,
-        } 
+        }
 
     def to_musi_video(self) -> MusiVideo:
         if self.duration == -1 or self.video_id is None:
