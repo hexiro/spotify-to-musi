@@ -19,6 +19,8 @@ from ytmusicapi import YTMusic
 from rich.progress import Progress, TaskID
 from requests_toolbelt import MultipartEncoder
 
+from spotify_to_musi.commons import SPOTIFY_ID_REGEX
+
 from .typings.core import Playlist, Track, TrackData
 from .cache import cache_tracks, get_cached_tracks
 from .paths import spotify_cache_path
@@ -130,11 +132,11 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
     search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", ignore_spelling=True, limit=1)  # type: ignore
-    
+
     if not search:
         logger.warning(f"No results found for track, {search_query!r}")
         return
-    
+
     result: YoutubeMusicSearch
     for option in search:
         if track.song.lower() in option["title"].lower() and option["isExplicit"]:
@@ -319,9 +321,30 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
     return code
 
 
-def transfer_spotify_to_musi(
-    spotify_liked_songs: list[SpotifyLikedSong], spotify_playlists: list[SpotifyPlaylist]
-) -> None:
+def songs_from_options(user: bool, playlist: list[str]) -> tuple[list[SpotifyLikedSong], list[SpotifyPlaylist]]:
+    spotify = get_spotify()
+
+    spotify_liked_songs: list[SpotifyLikedSong] = []
+    spotify_playlists: list[SpotifyPlaylist] = []
+
+    if user:
+        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])
+        spotify_playlists.extend(spotify.current_user_playlists()["items"])
+    for playlist_link in playlist:
+        match = SPOTIFY_ID_REGEX.match(playlist_link)
+        playlist_id = match.group("id") if match else playlist_link
+        try:
+            pl = spotify.playlist(playlist_id)
+        except spotipy.exceptions.SpotifyException:
+            logger.warning(f"Unable to find playlist: {playlist_link}")
+            continue
+        spotify_playlists.append(pl)
+    return spotify_liked_songs, spotify_playlists
+
+
+def transfer_spotify_to_musi(user: bool, playlist: list[str]) -> None:
+
+    spotify_liked_songs, spotify_playlists = songs_from_options(user, playlist)
 
     # TODO: handle error handling in yt search better.
 

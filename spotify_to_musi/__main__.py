@@ -13,7 +13,7 @@ import spotipy.oauth2
 import spotipy.exceptions
 
 from .commons import SPOTIFY_ID_REGEX
-from .cache import patch_spotify_secrets, store_spotify_secrets
+from .cache import has_unpatched_spotify_secrets, patch_spotify_secrets, store_spotify_secrets
 from .main import get_spotify, transfer_spotify_to_musi
 from .paths import spotify_cache_path, spotify_data_path
 
@@ -48,32 +48,20 @@ def cli():
 @click.option("-pl", "--playlist", help="Transfer Spotify playlist(s) by URL.", multiple=True, type=str)
 def transfer(user: bool, playlist: list[str]):
     """Transfer songs from Spotify to Musi."""
-    if spotify_data_path.is_file():
+    if has_unpatched_spotify_secrets():
         patch_spotify_secrets()
 
     try:
-        spotify = get_spotify()
+        get_spotify()
     except spotipy.oauth2.SpotifyOauthError:
         console.print("[red]Spotify not authorized. Please run `setup` first.[/red]")
         return
 
-    spotify_liked_songs: list[SpotifyLikedSong] = []
-    spotify_playlists: list[SpotifyPlaylist] = []
+    if not user and not playlist:
+        console.print("[red]Not uploading user's playlists and no playlist(s) were specified.[/red]")
+        return
 
-    if user:
-        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])
-        spotify_playlists.extend(spotify.current_user_playlists()["items"])
-    for playlist_link in playlist:
-        match = SPOTIFY_ID_REGEX.match(playlist_link)
-        playlist_id = match.group("id") if match else playlist_link
-        try:
-            pl = spotify.playlist(playlist_id)
-        except spotipy.exceptions.SpotifyException:
-            logger.warning(f"Unable to find playlist: {playlist_link}")
-            continue
-        spotify_playlists.append(pl)
-
-    transfer_spotify_to_musi(spotify_liked_songs, spotify_playlists)
+    transfer_spotify_to_musi(user, playlist)
 
 
 @cli.command()
@@ -83,14 +71,14 @@ def setup():
     spotify_to_musi_text = f"[bold][green]spotify[/green][reset]-to-[/reset][dark_orange3]musi[/dark_orange3][/bold]"
     welcome_text = f"Welcome to {spotify_to_musi_text} first time setup! [i](Ctrl + C to exit)[/i]"
 
-    if spotify_cache_path and spotify_cache_path.is_file():
+    if has_unpatched_spotify_secrets():
         patch_spotify_secrets()
         welcome_text += "\n* You're already setup! Only run this script again if you're having issues."
 
     console.print(welcome_text, highlight=True, markup=True)
 
     def prompt(for_: str, default: str | None = None) -> str:
-        default_text = f" [{grey}]\\[[i]{default}[/i]][/{grey}]" if default else ""
+        default_text = f" [{grey}][[i]{default}[/i]][/{grey}]" if default else ""
         text = f"[magenta]{for_}{default_text}[/magenta]: "
 
         res = console.input(text) or default
@@ -103,7 +91,16 @@ def setup():
     spotify_client_secret = prompt("Spotify Client Secret", default=os.getenv("SPOTIPY_CLIENT_SECRET"))
     store_spotify_secrets(spotify_client_id, spotify_client_secret)
     patch_spotify_secrets()
-    get_spotify()
+    try:
+        get_spotify()
+    except spotipy.oauth2.SpotifyOauthError:
+        spotify_cache_path.unlink()
+    try:
+        get_spotify()
+    except spotipy.oauth2.SpotifyOauthError:
+        console.print("[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]")
+        return
+    console.print("[green]Spotify authorized![/green]")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,14 @@
 """module to handle fs interactions."""
+
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from typing import TYPE_CHECKING, TypedDict, Iterable
 
 
-from .paths import spotify_data_path, data_cache_path
+from .paths import spotify_cache_path, spotify_data_path, data_cache_path
 from .typings.core import Track
 
 if TYPE_CHECKING:
@@ -16,14 +18,12 @@ if TYPE_CHECKING:
 def get_cached_tracks() -> list[Track]:
     tracks: list[Track] = []
     if data_cache_path.is_file():
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             with open(data_cache_path) as file:
                 cached_data: list[TrackDict] = json.load(file)
             for track in cached_data:
                 deserialized = Track(**track)
                 tracks.append(deserialized)
-        except json.JSONDecodeError:
-            pass
     return tracks
 
 
@@ -54,7 +54,26 @@ def store_spotify_secrets(spotify_client_id: str, spotify_client_secret: str) ->
 
 
 def patch_spotify_secrets() -> None:
-    with open(spotify_data_path, "r") as file:
-        data: SpotifySecrets = json.load(file)
-    os.environ["SPOTIPY_CLIENT_ID"] = data["spotify_client_id"]
-    os.environ["SPOTIPY_CLIENT_SECRET"] = data["spotify_client_secret"]
+    spotify_client_id: str | None = None
+    spotify_client_secret: str | None = None
+    if os.getenv("SPOTIFY_CLIENT_ID") and os.getenv("SPOTIFY_CLIENT_SECRET"):
+        spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
+        spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+    elif spotify_data_path and spotify_data_path.is_file():
+        with open(spotify_data_path, "r") as file:
+            data: SpotifySecrets = json.load(file)
+        spotify_client_id = data["spotify_client_id"]
+        spotify_client_secret = data["spotify_client_secret"]
+    if spotify_client_id:
+        os.environ["SPOTIPY_CLIENT_ID"] = spotify_client_id
+    if spotify_client_secret:
+        os.environ["SPOTIPY_CLIENT_SECRET"] = spotify_client_secret
+
+
+def has_unpatched_spotify_secrets() -> bool:
+    if os.environ.get("SPOTIPY_CLIENT_ID") and os.environ.get("SPOTIPY_CLIENT_SECRET"):
+        # already set
+        return False
+    has_secrets_in_file = spotify_cache_path and spotify_cache_path.is_file()
+    has_secrets_in_env = bool(os.environ.get("SPOTIFY_CLIENT_ID") and os.environ.get("SPOTIFY_CLIENT_SECRET"))
+    return has_secrets_in_file or has_secrets_in_env
