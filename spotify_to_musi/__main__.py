@@ -73,7 +73,9 @@ def setup():
 
     if has_unpatched_spotify_secrets():
         patch_spotify_secrets()
-        welcome_text += "\n* You're already setup! Only run this script again if you're having issues."
+        welcome_text += (
+            "\n* Your secrets are already set! Only run this script again if you need to authorize with Spotify again."
+        )
 
     console.print(welcome_text, highlight=True, markup=True)
 

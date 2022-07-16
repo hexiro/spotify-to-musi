@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+from operator import itemgetter
 import os
 from typing import TYPE_CHECKING, TypedDict, Iterable
 
@@ -34,8 +35,9 @@ def cache_tracks(tracks: Iterable[Track]) -> None:
             continue
         track_dict = track.to_dict()
         cache_items.append(track_dict)
+    cache_items.sort(key=itemgetter("artist"))
     with open(data_cache_path, "w") as file:
-        json.dump(cache_items, file, indent=4)
+        json.dump(cache_items, file)
 
 
 class SpotifySecrets(TypedDict):
