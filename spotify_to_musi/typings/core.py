@@ -43,6 +43,7 @@ class TrackDict(TypedDict):
 class Track:
     artist: str
     song: str
+    spotify_duration: int = field(default=-1, compare=False)
     duration: int = field(default=-1, hash=False, compare=False)  # in seconds
     video_id: str | None = field(default=None, hash=False, compare=False)
     creation_time: float = field(default=-1, hash=False, compare=False)

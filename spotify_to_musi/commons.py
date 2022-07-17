@@ -3,7 +3,7 @@ import hashlib
 import json
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 import uuid
 
 if TYPE_CHECKING:

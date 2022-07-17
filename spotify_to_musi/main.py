@@ -7,9 +7,7 @@ import logging
 import math
 import queue
 import threading
-import datetime
 import time
-import uuid
 from typing import TYPE_CHECKING
 
 import requests
@@ -29,8 +27,7 @@ if TYPE_CHECKING:
     from .typings.core import LikedSongs
     from .typings.musi import MusiItem, MusiPlaylist, MusiVideo, MusiBackupResponse
     from .typings.youtube import YoutubeMusicSearch
-    from .typings.spotify import SpotifyPlaylistItem
-    from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
+    from .typings.spotify import SpotifyPlaylistItem, SpotifyLikedSong, SpotifyPlaylist, SpotifyTrack
 
 
 console = rich.get_console()
@@ -59,9 +56,10 @@ def spotify_track_to_track(spotify_track: SpotifyTrack) -> Track | None:
     try:
         artist = spotify_track["artists"][0]["name"]
         song = spotify_track["name"]
+        spotify_duration = int(spotify_track["duration_ms"] / 1000)
     except (KeyError, TypeError):
         return None
-    return Track(artist, song)
+    return Track(artist, song, spotify_duration)
 
 
 def get_spotify_playlist_tracks(
@@ -131,19 +129,44 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     search_query = f"{track.artist} - {track.song}"
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
+    # prioritize explicit songs
     search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", ignore_spelling=True, limit=1)  # type: ignore
+    search = [s for s in search if s["artists"]]
+    search.sort(key=lambda x: x["isExplicit"], reverse=True)
 
     if not search:
         logger.warning(f"No results found for track, {search_query!r}")
         return
 
-    result: YoutubeMusicSearch
-    for option in search:
-        if track.song.lower() in option["title"].lower() and option["isExplicit"]:
-            result = option
-            break
-    else:
-        result = search[0]
+    correct_artist_searches = [s for s in search if s["artists"][0]["name"] == track.artist]
+    incorrect_artist_searches = [s for s in search if s not in correct_artist_searches]
+
+    result: YoutubeMusicSearch | None = None
+
+    for option in correct_artist_searches:
+        result = option
+        break
+
+    if not result:
+        top_result: YoutubeMusicSearch = yt_music.search(search_query, limit=1)[0]  # type: ignore
+        if top_result["resultType"] in ("song", "video"):
+            result = top_result 
+
+    if not result:
+        for option in incorrect_artist_searches:
+            if track.song.lower() in option["title"].lower():
+                result = option
+                break
+    
+    if not result:
+        logger.warning(f"No results found for track, {search_query!r}")
+        return
+
+    youtube_artist = result["artists"][0]["name"]
+    spotify_artist = track.artist
+
+    if youtube_artist.lower() != spotify_artist.lower():
+        logger.warning(f"Artist mismatch, {youtube_artist!r} != {spotify_artist!r} for search, {search_query}")
 
     logger.debug(f"{result=}")
 
@@ -152,7 +175,7 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     duration = result["duration_seconds"]
     video_id = result["videoId"]
 
-    logger.debug(f"Done! {title=!r} {artist=!r} {video_id=!r}")
+    logger.debug(f"Done! {title=!r} {artist=!r} {result['title']=!r}")
 
     return TrackData(duration, video_id)
 

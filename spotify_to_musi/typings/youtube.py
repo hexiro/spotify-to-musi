@@ -23,18 +23,18 @@ class Thumbnail(TypedDict):
     width: int
     height: int
 
-
+# not all these fields always exist, but they will on a song
 class YoutubeMusicSearch(TypedDict):
     category: str
     resultType: str
-    title: str
-    album: Album
-    feedbackTokens: FeedbackTokens
     videoId: str
-    videoType: str
-    duration: str
-    year: None
+    title: str
     artists: list[Artist]
+    album: Album
+    duration: str
     duration_seconds: int
-    isExplicit: bool
+    isExplicit: bool # doesn't exist on videos
+    feedbackTokens: FeedbackTokens
+    videoType: str
+    year: None
     thumbnails: list[Thumbnail]
