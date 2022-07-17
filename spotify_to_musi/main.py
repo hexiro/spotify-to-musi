@@ -150,14 +150,14 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     if not result:
         top_result: YoutubeMusicSearch = yt_music.search(search_query, limit=1)[0]  # type: ignore
         if top_result["resultType"] in ("song", "video"):
-            result = top_result 
+            result = top_result
 
     if not result:
         for option in incorrect_artist_searches:
             if track.song.lower() in option["title"].lower():
                 result = option
                 break
-    
+
     if not result:
         logger.warning(f"No results found for track, {search_query!r}")
         return
@@ -366,7 +366,7 @@ def songs_from_options(user: bool, playlist: list[str]) -> tuple[list[SpotifyLik
     return spotify_liked_songs, spotify_playlists
 
 
-def transfer_spotify_to_musi(user: bool, playlist: list[str]) -> None:
+def transfer_spotify_to_musi(user: bool, playlist: list[str]) -> str | None:
 
     spotify_liked_songs, spotify_playlists = songs_from_options(user, playlist)
 
@@ -391,3 +391,4 @@ def transfer_spotify_to_musi(user: bool, playlist: list[str]) -> None:
 
     code = upload_to_musi(liked_songs, playlists)
     console.print(f"[green]Success! use code, [bold]{code}[/bold] on Musi to restore your songs from Spotify.[/green]")
+    return code
