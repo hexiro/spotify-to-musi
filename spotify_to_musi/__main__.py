@@ -84,8 +84,10 @@ def setup():
         if default:
             if len(default) > 5:
                 mid_point = len(default) // 2
-                default = f"{default[:mid_point]}..."
-            default_text = f" [{grey}][[i]{default}[/i]][/{grey}]"
+                default_fragment = f"{default[:mid_point]}..."
+            else:
+                default_fragment = default
+            default_text = f" [{grey}][[i]{default_fragment}[/i]][/{grey}]"
         text = f"[magenta]{for_}{default_text}[/magenta]: "
 
         res = console.input(text) or default
