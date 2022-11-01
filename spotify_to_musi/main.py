@@ -130,30 +130,18 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     logger.debug(f"Searching youtube for track, {search_query!r}")
 
     # prioritize explicit songs
-    search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", ignore_spelling=True, limit=1)  # type: ignore
-    search = [s for s in search if s["artists"]]
-    search.sort(key=lambda x: x["isExplicit"], reverse=True)
-
-    if not search:
-        logger.warning(f"No results found for track, {search_query!r}")
-        return
-
-    correct_artist_searches = [s for s in search if s["artists"][0]["name"] == track.artist]
-    incorrect_artist_searches = [s for s in search if s not in correct_artist_searches]
 
     result: YoutubeMusicSearch | None = None
 
-    for option in correct_artist_searches:
-        result = option
-        break
-
-    if not result:
-        top_result: YoutubeMusicSearch = yt_music.search(search_query, limit=1)[0]  # type: ignore
-        if top_result["resultType"] in ("song", "video"):
-            result = top_result
-
-    if not result:
-        for option in incorrect_artist_searches:
+    top_result: YoutubeMusicSearch = yt_music.search(search_query, limit=1)[0]  # type: ignore
+    if top_result["resultType"] in ("song", "video"):
+        result = top_result
+    else:
+        logger.warning(f"Top result for track, {search_query!r} is not a song or video.")
+        search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", limit=1)  # type: ignore
+        search = [s for s in search if s["artists"]]
+        search.sort(key=lambda x: x["isExplicit"], reverse=True)
+        for option in search:
             if track.song.lower() in option["title"].lower():
                 result = option
                 break
