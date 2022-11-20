@@ -77,7 +77,7 @@ def get_spotify_playlist_tracks(
 
         results = spotify.playlist_items(playlist_id)
         progress.advance(task)
-        items: list[SpotifyPlaylistItem] = results["items"]
+        items: list[SpotifyPlaylistItem] = results["items"]  # type: ignore
 
         while results["next"]:  # type: ignore
             results = spotify.next(results)
@@ -340,13 +340,13 @@ def songs_from_options(user: bool, playlist: list[str]) -> tuple[list[SpotifyLik
     spotify_playlists: list[SpotifyPlaylist] = []
 
     if user:
-        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])
-        spotify_playlists.extend(spotify.current_user_playlists()["items"])
+        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])  # type: ignore
+        spotify_playlists.extend(spotify.current_user_playlists()["items"])  # type: ignore
     for playlist_link in playlist:
         match = SPOTIFY_ID_REGEX.match(playlist_link)
         playlist_id = match.group("id") if match else playlist_link
         try:
-            pl = spotify.playlist(playlist_id)
+            pl: SpotifyPlaylist = spotify.playlist(playlist_id)  # type: ignore
         except spotipy.exceptions.SpotifyException:
             logger.warning(f"Unable to find playlist: {playlist_link}")
             continue
