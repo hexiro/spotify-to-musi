@@ -126,35 +126,53 @@ def search_cache_for_track(track: Track) -> TrackData | None:
 
 
 def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | None:
-    search_query = f"{track.artist} - {track.song}"
+    search_query = f"{track.artist} - {track.song} (Official Audio)"
     logger.debug(f"Searching youtube for track, {search_query!r}")
-
-    # prioritize explicit songs
 
     result: YoutubeMusicSearch | None = None
 
-    top_result: YoutubeMusicSearch = yt_music.search(search_query, limit=1)[0]  # type: ignore
-    if top_result["resultType"] in ("song", "video"):
-        result = top_result
+    top_results: list[YoutubeMusicSearch] = yt_music.search(search_query, limit=50)  # type: ignore
+
+    # filter out non-song or video results
+    top_results = [r for r in top_results if r["resultType"] in ("song", "video")]
+
+    # filter out results that don't indicate weather the result is explicit or not
+    explicit_marked_results = [r for r in top_results if "isExplicit" in r]
+
+    # all results are clean, indicating that the song is actually clean.
+    is_clean = all(not r["isExplicit"] for r in explicit_marked_results)
+    if is_clean:
+        logger.debug(f"track, {search_query!r} is clean")
+    # some results are explicit, indicating that the song is actually explicit.
+    # filters out the non-explicit results.
     else:
-        logger.warning(f"Top result for track, {search_query!r} is not a song or video.")
-        search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", limit=1)  # type: ignore
-        search = [s for s in search if s["artists"]]
-        search.sort(key=lambda x: x["isExplicit"], reverse=True)
-        for option in search:
-            if track.song.lower() in option["title"].lower():
-                result = option
-                break
+        top_results = [r for r in top_results if r.get("isExplicit", True)]
+
+    # filters out results with the wrong artist, but falls back if there are no artist matches
+    artist_match_results = [r for r in top_results if track.artist.lower() in (a["name"].lower() for a in r["artists"])]
+    if artist_match_results:
+        top_results = artist_match_results
+
+    # auto selects songs if they have the correct title, but falls back if there are no song name matches
+    for top_result in top_results:
+        if top_result["resultType"] == "song" and top_result["title"] == track.song:
+            result = top_result
+            break
+    else:
+        # sort by video duration (closest to the spotify duration)
+        top_results.sort(key=lambda r: abs(track.spotify_duration - r["duration_seconds"]))
+
+        result = top_results[0]
 
     if not result:
         logger.warning(f"No results found for track, {search_query!r}")
         return
 
-    youtube_artist = result["artists"][0]["name"]
+    youtube_artists = tuple(a["name"].lower() for a in result["artists"])
     spotify_artist = track.artist
 
-    if youtube_artist.lower() != spotify_artist.lower():
-        logger.warning(f"Artist mismatch, {youtube_artist!r} != {spotify_artist!r} for search, {search_query}")
+    if spotify_artist.lower() not in youtube_artists:
+        logger.warning(f"Artist mismatch, {youtube_artists!r} != {spotify_artist!r} for search, {search_query}")
 
     logger.debug(f"{result=}")
 
