@@ -131,7 +131,11 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
 
     result: YoutubeMusicSearch | None = None
 
-    top_results: list[YoutubeMusicSearch] = yt_music.search(search_query, limit=50)  # type: ignore
+    try:
+        top_results: list[YoutubeMusicSearch] = yt_music.search(search_query, limit=50)  # type: ignore
+    except Exception:
+        logger.warning(f"failed to search for track, {search_query!r}")
+        return None
 
     # split into song or video results
     song_results = [r for r in top_results if r["resultType"] == "song"]
@@ -163,7 +167,11 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     # sorts by views & duration
     elif video_results:
 
-        def parse_views_string(views: str) -> int:
+        def parse_views_string(views: str | None) -> int:
+            if not views:
+                return 0
+            if views.endswith("B"):
+                return int(float(views[:-1]) * 1_000_000_000)
             if views.endswith("M"):
                 return int(float(views[:-1]) * 1_000_000)
             if views.endswith("K"):
@@ -173,8 +181,8 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
         # filters out videos with too different of a duration
         video_results = [r for r in video_results if abs(track.spotify_duration - r["duration_seconds"]) < 5]
         # sort by views to find most 'official' video
-        video_results.sort(key=lambda r: parse_views_string(r["views"]), reverse=True)
-        
+        video_results.sort(key=lambda r: parse_views_string(r.get("views")), reverse=True)
+
     if not result and video_results:
         result = video_results[0]
 
@@ -191,11 +199,11 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     logger.debug(f"{result=}")
 
     title: str = result["title"]
-    artist: str = result["artists"][0]["name"]
+    artists_names = (r["name"] for r in result["artists"])
     duration = result["duration_seconds"]
     video_id = result["videoId"]
 
-    logger.debug(f"Done! {title=!r} {artist=!r} {result['title']=!r}")
+    logger.debug(f"Done! {title=!r} {artists_names=!r} {result['title']=!r}")
 
     return TrackData(duration, video_id)
 
@@ -330,6 +338,8 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
             musi_playlists.append(musi_playlist)
 
         progress.advance(task_sending_to_musi)
+
+        liked_songs = [track for track in liked_songs if track.loaded]
 
         for position, track in enumerate(liked_songs):
             # add track to global video catalog
