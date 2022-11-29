@@ -154,7 +154,7 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
     song_results = [r for r in song_results if track.artist.lower() in (a["name"].lower() for a in r["artists"])]
 
     # filters out songs with too different of a duration
-    song_results = [r for r in song_results if abs(track.spotify_duration - r["duration_seconds"]) < 5]
+    song_results = [r for r in song_results if abs(track.spotify_duration - r["duration_seconds"]) < 10]
 
     # auto selects songs if they have the correct title, but falls back if there are no song name matches
     title_match_results = [r for r in song_results if track.song.lower() in r["title"].lower()]
@@ -179,7 +179,7 @@ def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | Non
             return int(views)
 
         # filters out videos with too different of a duration
-        video_results = [r for r in video_results if abs(track.spotify_duration - r["duration_seconds"]) < 5]
+        video_results = [r for r in video_results if abs(track.spotify_duration - r["duration_seconds"]) < 10]
         # sort by views to find most 'official' video
         video_results.sort(key=lambda r: parse_views_string(r.get("views")), reverse=True)
 

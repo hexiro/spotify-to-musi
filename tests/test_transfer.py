@@ -12,6 +12,7 @@ track_to_expected_video_id: dict[Track, str] = {
     Track(artist="Lil Uzi Vert", song="Do What I Want", spotify_duration=175): "ra1cvbdYhps",
     Track(artist="Lil Uzi Vert", song="Erase Your Social", spotify_duration=199): "X21M7w6IkoM",
     Track(artist="Offset", song="How Did I Get Here (feat. J. Cole)", spotify_duration=276): "v8PRzHXYcII",
+    Track(artist="Baby Keem", song="ORANGE SODA", spotify_duration=129): "PTv7cJjNig8"
 }
 
 
