@@ -77,7 +77,7 @@ def get_spotify_playlist_tracks(
 
         results = spotify.playlist_items(playlist_id)
         progress.advance(task)
-        items: list[SpotifyPlaylistItem] = results["items"]
+        items: list[SpotifyPlaylistItem] = results["items"]  # type: ignore
 
         while results["next"]:  # type: ignore
             results = spotify.next(results)
@@ -126,56 +126,84 @@ def search_cache_for_track(track: Track) -> TrackData | None:
 
 
 def search_youtube_for_track(track: Track, yt_music: YTMusic) -> TrackData | None:
-    search_query = f"{track.artist} - {track.song}"
+    search_query = f"{track.artist} - {track.song} (Official Audio)"
     logger.debug(f"Searching youtube for track, {search_query!r}")
-
-    # prioritize explicit songs
-    search: list[YoutubeMusicSearch] = yt_music.search(search_query, filter="songs", ignore_spelling=True, limit=1)  # type: ignore
-    search = [s for s in search if s["artists"]]
-    search.sort(key=lambda x: x["isExplicit"], reverse=True)
-
-    if not search:
-        logger.warning(f"No results found for track, {search_query!r}")
-        return
-
-    correct_artist_searches = [s for s in search if s["artists"][0]["name"] == track.artist]
-    incorrect_artist_searches = [s for s in search if s not in correct_artist_searches]
 
     result: YoutubeMusicSearch | None = None
 
-    for option in correct_artist_searches:
-        result = option
-        break
+    try:
+        top_results: list[YoutubeMusicSearch] = yt_music.search(search_query, limit=50)  # type: ignore
+    except Exception:
+        logger.warning(f"failed to search for track, {search_query!r}")
+        return None
 
-    if not result:
-        top_result: YoutubeMusicSearch = yt_music.search(search_query, limit=1)[0]  # type: ignore
-        if top_result["resultType"] in ("song", "video"):
-            result = top_result
+    # split into song or video results
+    song_results = [r for r in top_results if r["resultType"] == "song"]
+    video_results = [r for r in top_results if r["resultType"] == "video"]
 
-    if not result:
-        for option in incorrect_artist_searches:
-            if track.song.lower() in option["title"].lower():
-                result = option
-                break
+    # all results are clean, indicating that the song is actually clean.
+    is_clean = all(not r["isExplicit"] for r in song_results)
+    if is_clean:
+        logger.debug(f"track, {search_query!r} is clean")
+    # some results are explicit, indicating that the song is actually explicit.
+    # filters out the non-explicit results.
+    else:
+        song_results = [r for r in song_results if r["isExplicit"]]
+
+    # filters out results with a different artist name
+    song_results = [r for r in song_results if track.artist.lower() in (a["name"].lower() for a in r["artists"])]
+
+    # filters out songs with too different of a duration
+    song_results = [r for r in song_results if abs(track.spotify_duration - r["duration_seconds"]) < 10]
+
+    # auto selects songs if they have the correct title, but falls back if there are no song name matches
+    title_match_results = [r for r in song_results if track.song.lower() in r["title"].lower()]
+    if title_match_results:
+        result = title_match_results[0]
+    # no exact title match but exact artist match, fallback to using youtube music's order to select the song
+    elif song_results:
+        result = song_results[0]
+    # fallback to using videos if no song matches
+    # sorts by views & duration
+    elif video_results:
+
+        def parse_views_string(views: str | None) -> int:
+            if not views:
+                return 0
+            if views.endswith("B"):
+                return int(float(views[:-1]) * 1_000_000_000)
+            if views.endswith("M"):
+                return int(float(views[:-1]) * 1_000_000)
+            if views.endswith("K"):
+                return int(float(views[:-1]) * 1_000)
+            return int(views)
+
+        # filters out videos with too different of a duration
+        video_results = [r for r in video_results if abs(track.spotify_duration - r["duration_seconds"]) < 10]
+        # sort by views to find most 'official' video
+        video_results.sort(key=lambda r: parse_views_string(r.get("views")), reverse=True)
+
+    if not result and video_results:
+        result = video_results[0]
 
     if not result:
         logger.warning(f"No results found for track, {search_query!r}")
         return
 
-    youtube_artist = result["artists"][0]["name"]
+    youtube_artists = tuple(a["name"].lower() for a in result["artists"])
     spotify_artist = track.artist
 
-    if youtube_artist.lower() != spotify_artist.lower():
-        logger.warning(f"Artist mismatch, {youtube_artist!r} != {spotify_artist!r} for search, {search_query}")
+    if spotify_artist.lower() not in youtube_artists:
+        logger.warning(f"Artist mismatch, {youtube_artists!r} != {spotify_artist!r} for search, {search_query}")
 
     logger.debug(f"{result=}")
 
     title: str = result["title"]
-    artist: str = result["artists"][0]["name"]
+    artists_names = (r["name"] for r in result["artists"])
     duration = result["duration_seconds"]
     video_id = result["videoId"]
 
-    logger.debug(f"Done! {title=!r} {artist=!r} {result['title']=!r}")
+    logger.debug(f"Done! {title=!r} {artists_names=!r} {result['title']=!r}")
 
     return TrackData(duration, video_id)
 
@@ -311,6 +339,8 @@ def upload_to_musi(liked_songs: LikedSongs, playlists: list[Playlist]) -> str | 
 
         progress.advance(task_sending_to_musi)
 
+        liked_songs = [track for track in liked_songs if track.loaded]
+
         for position, track in enumerate(liked_songs):
             # add track to global video catalog
             musi_items.append(track.to_musi_video())
@@ -352,13 +382,13 @@ def songs_from_options(user: bool, playlist: list[str]) -> tuple[list[SpotifyLik
     spotify_playlists: list[SpotifyPlaylist] = []
 
     if user:
-        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])
-        spotify_playlists.extend(spotify.current_user_playlists()["items"])
+        spotify_liked_songs.extend(spotify.current_user_saved_tracks()["items"])  # type: ignore
+        spotify_playlists.extend(spotify.current_user_playlists()["items"])  # type: ignore
     for playlist_link in playlist:
         match = SPOTIFY_ID_REGEX.match(playlist_link)
         playlist_id = match.group("id") if match else playlist_link
         try:
-            pl = spotify.playlist(playlist_id)
+            pl: SpotifyPlaylist = spotify.playlist(playlist_id)  # type: ignore
         except spotipy.exceptions.SpotifyException:
             logger.warning(f"Unable to find playlist: {playlist_link}")
             continue

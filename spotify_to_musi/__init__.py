@@ -14,9 +14,8 @@ logging.basicConfig(level="WARNING", format="%(message)s", force=True, handlers=
 
 console = rich.get_console()
 
+
 # monkey patch colors
-
-
 def _get_auth_response_interactive(self: SpotifyOAuth, open_browser: bool = False):
     url = self.get_authorize_url()
     prompt = (
