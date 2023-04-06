@@ -25,7 +25,6 @@ def duration_in_seconds(duration_str: str) -> int:
 
 class YouTubeMusicArtist(BaseModel):
     name: str
-    id: str
 
 
 class YouTubeMusicAlbum(BaseModel):
@@ -40,8 +39,15 @@ class _YouTubeMusicResultType(BaseModel):
 
 
 class YouTubeMusicSong(_YouTubeMusicResultType):
-    album: YouTubeMusicAlbum
+    album: YouTubeMusicAlbum | None
     is_explicit: bool
+
+    @validator("album")
+    def must_not_be_single(cls, v: YouTubeMusicAlbum, values) -> YouTubeMusicAlbum | None:
+        if v.name == values["title"]:
+            return None
+
+        return v
 
 
 class YouTubeMusicVideo(_YouTubeMusicResultType):
@@ -60,7 +66,7 @@ class YoutubeMusicSearch(BaseModel):
 if __name__ == "__main__":
     song = YouTubeMusicSong(
         title="Crushin'",
-        artists=[YouTubeMusicArtist(name="4me", id="123")],
+        artists=[YouTubeMusicArtist(name="4me")],
         album=YouTubeMusicAlbum(name="Crushin'"),
         duration=duration_in_seconds("3:09"),
         is_explicit=True,

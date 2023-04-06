@@ -1,10 +1,5 @@
-### constants
-
-# from ytmusicapi
-
 import asyncio
 import contextlib
-import itertools
 import time
 import httpx
 import typing as t
@@ -49,7 +44,7 @@ Filter: t.TypeAlias = t.Literal[
     "songs", "videos", "albums", "artists", "playlists", "community_playlists", "featured_playlists", "uploads"
 ]
 Scope: t.TypeAlias = t.Literal["library", "uploads"]
-TabKey: t.TypeAlias = t.Literal["musicCardShelfRenderer", "musicShelfRenderer"]
+CategoryKey: t.TypeAlias = t.Literal["musicCardShelfRenderer", "musicShelfRenderer", "itemSectionRenderer"]
 ResultType: t.TypeAlias = t.Literal["Song", "Video", "Album"]
 Tab: t.TypeAlias = t.Literal["Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"]
 
@@ -107,6 +102,9 @@ def views_as_integer(views: str) -> int:
     num_string = views[:-1]
     unit_string = views[-1]
 
+    if not unit_string.isalpha():
+        return int(views.replace(",", ""))
+
     return int(float(num_string) * multipliers[unit_string])
 
 
@@ -115,7 +113,7 @@ async def search_music(query: str):
     Search YouTube music for a query.
     """
 
-    body = {"context": YT_MUSIC_CONTEXT, "query": query, "params": "EhGKAQ4IARABGAEgASgAOAFAAUICCAE%3D"}
+    body = {"context": YT_MUSIC_CONTEXT, "query": query}
 
     async with httpx.AsyncClient() as client:
         url = YT_MUSIC_BASE_API + "search"
@@ -128,8 +126,8 @@ async def search_music(query: str):
 
     data = resp.json()
 
-    with open(f"data-{time.time()}.json", "w") as f:
-        json.dump(data, f, indent=4)
+    # with open(f"data-{time.time()}.json", "w") as f:
+    #     json.dump(data, f, indent=4)
 
     if "error" in data:
         raise Exception(data["error"])
@@ -142,7 +140,7 @@ def tabs_from_scope(data: dict) -> dict:
     return tabs
 
 
-def video_data_from_nested(title_data: dict, video_data: dict):
+def parse_title_and_subtitle_data(title_data: dict, video_data: dict):
     """
     Extracts video data from nested data structures.
     Should be a dict with a key 'run' containing a list of dictionaries.
@@ -169,6 +167,7 @@ def video_data_from_nested(title_data: dict, video_data: dict):
 
     class Run(t.TypedDict):
         text: str
+        navigationEndpoint: t.NotRequired[t.Any]
 
     class Artist(t.TypedDict):
         name: str
@@ -184,9 +183,14 @@ def video_data_from_nested(title_data: dict, video_data: dict):
             continue
         new_runs.append(run)
 
+    # category_type like "Songs" or "Videos"
+    # not important so just remove to get it out of the way.
+    # if that isn't first an Artist will be which has a navigationEndpoint to get to their page.
+    if "navigationEndpoint" not in new_runs[0]:
+        new_runs.pop(0)
+
     data = {
         "title": title,
-        "video_type": new_runs.pop(0)["text"],
         "duration": duration_in_seconds(new_runs.pop()["text"]),
     }
 
@@ -208,7 +212,7 @@ def video_data_from_nested(title_data: dict, video_data: dict):
     return data
 
 
-def song_or_video_id(song_or_video_data: dict) -> str:
+def parse_video_id(song_or_video_data: dict) -> str:
     """
     Extracts the video_id from a song or video data object.
     """
@@ -232,41 +236,43 @@ def song_or_video_id(song_or_video_data: dict) -> str:
 
 
 def parse_top_result(top_result_data: dict) -> TopResult:
-
     navigation_endpoint = top_result_data["title"]["runs"][0]["navigationEndpoint"]
-    navigation_endpoint_keys = set(navigation_endpoint.keys())
 
-    mode: t.Literal["watch", "browse"] = "watch" if "watchEndpoint" in navigation_endpoint_keys else "browse"
+    # artist
+    page_type: str | None = None
+    with contextlib.suppress(KeyError):
+        long_key_one = "browseEndpointContextSupportedConfigs"
+        lone_key_two = "browseEndpointContextMusicConfig"
+        page_type = navigation_endpoint["browseEndpoint"][long_key_one][lone_key_two]["pageType"]
+    with contextlib.suppress(KeyError):
+        long_key_one = "watchEndpointMusicSupportedConfigs"
+        lone_key_two = "watchEndpointMusicConfig"
+        page_type = navigation_endpoint["watchEndpoint"][long_key_one][lone_key_two]["musicVideoType"]
 
-    mode_endpoint = navigation_endpoint[f"{mode}Endpoint"]
-    mode_endpoint_keys = list(mode_endpoint.keys())
-    mode_endpoint_key = mode_endpoint_keys[-1]
+    if not page_type:
+        # page_type not found
+        print("page_type not found")
+        return None
 
-    next_key = next(iter(mode_endpoint[mode_endpoint_key].keys()))
-    last_key = next(iter(mode_endpoint[mode_endpoint_key][next_key].keys()))
-
-    page_type: str = mode_endpoint[mode_endpoint_key][next_key][last_key]
-
-    print(page_type)
-
-    if page_type not in ("MUSIC_VIDEO_TYPE_OMW", "MUSIC_VIDEO_TYPE_ATV"):
+    if page_type not in ("MUSIC_VIDEO_TYPE_OMW", "MUSIC_VIDEO_TYPE_OMV", "MUSIC_VIDEO_TYPE_ATV"):
         # not a song or video
+        print("not a song or video", page_type)
         return None
 
     title_data = top_result_data["title"]
     video_data = top_result_data["subtitle"]
 
-    nested_data = video_data_from_nested(title_data, video_data)
-    video_id = song_or_video_id(top_result_data)
+    title_and_subtitle_data = parse_title_and_subtitle_data(title_data, video_data)
+    video_id = parse_video_id(top_result_data)
 
     if page_type == "MUSIC_VIDEO_TYPE_ATV":
-        is_explicit = song_is_explicit(top_result_data)
-        return YouTubeMusicSong(**nested_data, video_id=video_id, is_explicit=is_explicit)
+        is_explicit = is_song_explicit(top_result_data)
+        return YouTubeMusicSong(**title_and_subtitle_data, video_id=video_id, is_explicit=is_explicit)
     else:  # page_type = "MUSIC_VIDEO_TYPE_OMW"
-        return YouTubeMusicVideo(**nested_data, video_id=video_id)
+        return YouTubeMusicVideo(**title_and_subtitle_data, video_id=video_id)
 
 
-def song_is_explicit(song_or_video_data: dict) -> bool:
+def is_song_explicit(song_or_video_data: dict) -> bool:
     normal_badges: list[dict] | None = song_or_video_data.get("badges")
     subtitle_badges: list[dict] | None = song_or_video_data.get("subtitleBadges")
     badges = normal_badges or subtitle_badges
@@ -283,39 +289,55 @@ def song_is_explicit(song_or_video_data: dict) -> bool:
     return False
 
 
-def parse_song_or_video(song_or_video_data: dict) -> dict:
-    long_key = "musicResponsiveListItemRenderer"
-    long_key_column = "musicResponsiveListItemFlexColumnRenderer"
+def parse_song_or_video(song_or_video_data: dict) -> YouTubeMusicSong | YouTubeMusicVideo:
+    title_and_subtitle_data = parse_song_or_video_title_and_subtitle_data(song_or_video_data)
+    video_id = parse_video_id(song_or_video_data)
 
-    song_or_video_data = song_or_video_data[long_key]
+    is_song = "album" in title_and_subtitle_data
 
-    title_data = song_or_video_data["flexColumns"][0][long_key_column]["text"]
-    video_data = song_or_video_data["flexColumns"][1][long_key_column]["text"]
+    if is_song:
+        is_explicit = is_song_explicit(song_or_video_data)
+        return YouTubeMusicSong(**title_and_subtitle_data, video_id=video_id, is_explicit=is_explicit)
 
-    video_id = song_or_video_id(song_or_video_data)
-    # videos don't have this only songs
-    is_explicit = song_is_explicit(song_or_video_data)
-    nested_data = video_data_from_nested(title_data, video_data)
-
-    return {**nested_data, "video_id": video_id, "is_explicit": is_explicit}
+    # is video
+    return YouTubeMusicVideo(**title_and_subtitle_data, video_id=video_id)
 
 
-def parse_category(song_or_video_data: dict) -> list[dict] | None:
+def parse_song_or_video_title_and_subtitle_data(song_or_video_data: dict) -> dict:
+    long_key = "musicResponsiveListItemFlexColumnRenderer"
+
+    title_data = song_or_video_data["flexColumns"][0][long_key]["text"]
+    video_data = song_or_video_data["flexColumns"][1][long_key]["text"]
+
+    title_and_subtitle_data = parse_title_and_subtitle_data(title_data, video_data)
+    return title_and_subtitle_data
+
+
+def parse_category(song_or_video_data: dict) -> list[YouTubeMusicSong | YouTubeMusicVideo] | None:
+    song_or_video_data = song_or_video_data[NORMAL_RESULT_KEY]
+
     category_type: Tab = song_or_video_data["title"]["runs"][0]["text"]
 
     if category_type not in ("Songs", "Videos"):
         return None
 
-    songs_or_videos = song_or_video_data["contents"]
-    return [parse_song_or_video(song_or_video) for song_or_video in songs_or_videos]
+    contents = song_or_video_data["contents"]
+    long_key = "musicResponsiveListItemRenderer"
 
+    results: list[YouTubeMusicSong | YouTubeMusicVideo] = []
 
-def parse_tab(tab: dict) -> list[dict] | dict | None:
-    return parse_category(tab[NORMAL_RESULT_KEY])
+    # i don't understand why but occasionally a video will show up in the songs section,
+    # so it's safer to just check ourselves and not rely on the categories for the filtering 100%
+
+    for content in contents:
+        content = content[long_key]
+        results.append(parse_song_or_video(content))
+
+    return results
 
 
 def is_top_result(tab: dict) -> bool:
-    tab_key: TabKey = list(tab.keys())[0]
+    tab_key: CategoryKey = list(tab.keys())[0]
     return tab_key == TOP_RESULT_KEY
 
 
@@ -324,73 +346,53 @@ def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
         return YoutubeMusicSearch(top_result=None, songs=[], videos=[])
 
     if "tabbedSearchResultsRenderer":
-        tabs = tabs_from_scope(data)
+        categories = tabs_from_scope(data)
     else:
-        tabs = data["contents"]
+        categories = data["contents"]
 
-    tabs = tabs["sectionListRenderer"]["contents"]
+    categories = categories["sectionListRenderer"]["contents"]
 
-    if not tabs:
+    if not categories:
         return YoutubeMusicSearch(top_result=None, songs=[], videos=[])
 
     top_result: TopResult = None
 
-    if is_top_result(tabs[0]):
-        top_result = parse_top_result(tabs.pop(0)[TOP_RESULT_KEY])
+    songs: list[YouTubeMusicSong] = []
+    videos: list[YouTubeMusicVideo] = []
 
-    return top_result
+    for category in categories:
 
-    # for tab in tabs:
-    #     res.append(parse_tab(tab))
+        key: CategoryKey = list(category.keys())[0]
 
-    # return res
+        # skip all 'informational' categories
+        # they will say things like 'Did you mean: <song name>'
+        if key not in (NORMAL_RESULT_KEY, TOP_RESULT_KEY):
+            print(f"Skipping category: {key}")
+            continue
+
+        if is_top_result(category):
+            top_result = parse_top_result(category[TOP_RESULT_KEY])
+            continue
+
+        category_data = parse_category(category)
+
+        if not category_data:
+            continue
+
+        for song_or_video in category_data:
+            if isinstance(song_or_video, YouTubeMusicSong):
+                songs.append(song_or_video)
+            else:
+                videos.append(song_or_video)
+
+    return YoutubeMusicSearch(
+        top_result=top_result,
+        songs=songs,
+        videos=videos,
+    )
 
 
 if __name__ == "__main__":
-
-    # filter_options = [
-    #     "songs",
-    #     "videos",
-    #     "albums",
-    #     "artists",
-    #     "playlists",
-    #     "community_playlists",
-    #     "featured_playlists",
-    #     "uploads",
-    # ]
-    # scope_options = ["library", "uploads"]
-    # ignore_spelling_options = [True, False]
-
-    # options = itertools.product(filter_options, scope_options, ignore_spelling_options)
-
-    # for option in options:
-    #     filter, scope, ignore_spelling = option
-    #     rich.print(f"filter: {filter}, scope: {scope}, ignore_spelling: {ignore_spelling}")
-    #     rich.print(get_search_params(filter, scope, ignore_spelling))
-    #     rich.print(f'[orange]{"-" * 20}[/orange]')
-
-    # {
-    # "category": "Songs",
-    # "resultType": "song",
-    # "videoId": "ZrOKjDZOtkA",
-    # "title": "Wonderwall",
-    # "artists": [
-    #   {
-    #     "name": "Oasis",
-    #     "id": "UCmMUZbaYdNH0bEd1PAlAqsA"
-    #   }
-    # ],
-    # "album": {
-    #   "name": "(What's The Story) Morning Glory? (Remastered)",
-    #   "id": "MPREb_9nqEki4ZDpp"
-    # },
-    # "duration": "4:19",
-    # "duration_seconds": 259
-    # "isExplicit": false,
-    # "feedbackTokens": {
-    #   "add": null,
-    #   "remove": null
-    # }
 
     async def main() -> None:
 
@@ -409,6 +411,38 @@ if __name__ == "__main__":
 
         # rich.print(results)
 
-    asyncio.run(main())
+    async def test() -> None:
+        # spelt wrong on purpose
+        queries: list[str] = [
+            "Destory Lonely - JETLGGD",
+            "Destory Lonely - BERGDORF",
+            "Destory Lonely - <3MYGNG",
+            "Destory Lonely - VTMNTSCOAT",
+            "Destory Lonely - NOSTYLIST",
+            "Destory Lonely - FAKENGGAS",
+            "Destory Lonely - SOARIN",
+            "Destory Lonely - TURNINUP",
+            "Destory Lonely - LNLY",
+            "Destory Lonely - PRSSURE",
+            "Destory Lonely - ONTHETABLE",
+            "Destory Lonely - SWGSKOOL",
+            "Destory Lonely - CRYSTLCSTLES",
+            "Destory Lonely - DANGEROUS",
+            "Destory Lonely - MKEITSTOP",
+            "Destory Lonely - ONTHEFLOOR",
+            "Destory Lonely - PASSAROUND",
+            "Destory Lonely - OTW",
+            "Destory Lonely - VETERAN (feat. Ken Carson)",
+        ]
 
-    # print()
+        tasks: list[asyncio.Task[YoutubeMusicSearch]] = []
+
+        for query in queries:
+            tasks.append(asyncio.create_task(search_music(query)))
+
+        results = await asyncio.gather(*tasks)
+        top_results = [r.top_result for r in results]
+
+        rich.print(top_results)
+
+    asyncio.run(test())
