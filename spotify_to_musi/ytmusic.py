@@ -4,12 +4,9 @@ import time
 import httpx
 import typing as t
 import rich
-import json
 
-from datatypes import YouTubeMusicVideo
-from datatypes import YouTubeMusicSong
-from datatypes import TopResult
-from datatypes import YoutubeMusicSearch
+
+from typings.youtube import YoutubeMusicSearch, YouTubeMusicSong, YouTubeMusicVideo, YouTubeTopResult
 
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
@@ -17,15 +14,10 @@ YT_MUSIC_BASE_API = YT_MUSIC_DOMAIN + "/youtubei/v1/"
 # key appears to be the same for all unauthenticated users
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0"
 
-YT_MUSIC_URI_PREFIX = "https://music.youtube.com/youtubei/v1/search?"
 
 YT_MUSIC_PARAMS = {"alt": "json", "key": "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"}
 YT_MUSIC_HEADERS = {
     "user-agent": USER_AGENT,
-    # "accept": "*/*",
-    # "accept-encoding": "gzip, deflate",
-    # "content-type": "application/json",
-    # "content-encoding": "gzip",
     "origin": YT_MUSIC_DOMAIN,
     "referer": YT_MUSIC_DOMAIN,
 }
@@ -34,33 +26,11 @@ YT_MUSIC_CONTEXT = {
     "client": {"clientName": "WEB_REMIX", "clientVersion": "1." + time.strftime("%Y%m%d", time.gmtime()) + ".01.00"},
 }
 
-YT_MUSIC_PAYLOAD_STRING = (
-    '{{"context":{{"client":{{"clientName":"WEB_REMIX",'
-    '"clientVersion":"0.1"}}}},"query":"{query}",'
-    '"params":"Eg-KAQwIARAAGAAgACgAMABqChADEAQQCRAFEAo="}}'
-)
 
-Filter: t.TypeAlias = t.Literal[
-    "songs", "videos", "albums", "artists", "playlists", "community_playlists", "featured_playlists", "uploads"
-]
-Scope: t.TypeAlias = t.Literal["library", "uploads"]
 CategoryKey: t.TypeAlias = t.Literal["musicCardShelfRenderer", "musicShelfRenderer", "itemSectionRenderer"]
-ResultType: t.TypeAlias = t.Literal["Song", "Video", "Album"]
-Tab: t.TypeAlias = t.Literal["Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"]
+Category: t.TypeAlias = t.Literal["Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"]
 
-FILTERS: t.Final = (
-    "songs",
-    "videos",
-    "albums",
-    "artists",
-    "playlists",
-    "community_playlists",
-    "featured_playlists",
-    "uploads",
-)
-SCOPES: t.Final = ("library", "uploads")
-TABS: t.Final = ("Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists")
-
+CATEGORIES: t.Final = ("Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists")
 TOP_RESULT_KEY: t.Final = "musicCardShelfRenderer"
 NORMAL_RESULT_KEY: t.Final = "musicShelfRenderer"
 
@@ -235,7 +205,7 @@ def parse_video_id(song_or_video_data: dict) -> str:
     return video_id
 
 
-def parse_top_result(top_result_data: dict) -> TopResult:
+def parse_top_result(top_result_data: dict) -> YouTubeTopResult:
     navigation_endpoint = top_result_data["title"]["runs"][0]["navigationEndpoint"]
 
     # artist
@@ -251,12 +221,10 @@ def parse_top_result(top_result_data: dict) -> TopResult:
 
     if not page_type:
         # page_type not found
-        print("page_type not found")
         return None
 
     if page_type not in ("MUSIC_VIDEO_TYPE_OMW", "MUSIC_VIDEO_TYPE_OMV", "MUSIC_VIDEO_TYPE_ATV"):
         # not a song or video
-        print("not a song or video", page_type)
         return None
 
     title_data = top_result_data["title"]
@@ -316,7 +284,7 @@ def parse_song_or_video_title_and_subtitle_data(song_or_video_data: dict) -> dic
 def parse_category(song_or_video_data: dict) -> list[YouTubeMusicSong | YouTubeMusicVideo] | None:
     song_or_video_data = song_or_video_data[NORMAL_RESULT_KEY]
 
-    category_type: Tab = song_or_video_data["title"]["runs"][0]["text"]
+    category_type: Category = song_or_video_data["title"]["runs"][0]["text"]
 
     if category_type not in ("Songs", "Videos"):
         return None
@@ -355,7 +323,7 @@ def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
     if not categories:
         return YoutubeMusicSearch(top_result=None, songs=[], videos=[])
 
-    top_result: TopResult = None
+    top_result: YouTubeTopResult = None
 
     songs: list[YouTubeMusicSong] = []
     videos: list[YouTubeMusicVideo] = []
@@ -367,7 +335,6 @@ def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
         # skip all 'informational' categories
         # they will say things like 'Did you mean: <song name>'
         if key not in (NORMAL_RESULT_KEY, TOP_RESULT_KEY):
-            print(f"Skipping category: {key}")
             continue
 
         if is_top_result(category):
@@ -395,21 +362,9 @@ def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
 if __name__ == "__main__":
 
     async def main() -> None:
-
         song_title = "Destroy Lonely - Bane"
-
-        ### - my results - ###
         results = await search_music(song_title)
         rich.print(results)
-
-        # ### - ytmusicapi results - ###
-        # from ytmusicapi import YTMusic
-
-        # yt = YTMusic()
-        # results = yt.search(song_title)
-        # results = [r for r in results if r["resultType"] in ("song", "video")]
-
-        # rich.print(results)
 
     async def test() -> None:
         # spelt wrong on purpose

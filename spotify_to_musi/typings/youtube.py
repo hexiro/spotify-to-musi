@@ -1,42 +1,42 @@
-from __future__ import annotations
+import typing as t
+from pydantic import BaseModel, validator
 
-from typing import TypedDict
 
-
-class Album(TypedDict):
+class YouTubeMusicArtist(BaseModel):
     name: str
-    id: str | None
 
 
-class Artist(TypedDict):
+class YouTubeMusicAlbum(BaseModel):
     name: str
-    id: str | None
 
 
-class FeedbackTokens(TypedDict):
-    add: None
-    remove: None
-
-
-class Thumbnail(TypedDict):
-    url: str
-    width: int
-    height: int
-
-
-# not all these fields always exist, but they will on a song
-class YoutubeMusicSearch(TypedDict):
-    category: str
-    resultType: str
-    videoId: str
+class _YouTubeMusicResultType(BaseModel):
     title: str
-    views: str  # only on videos
-    artists: list[Artist]
-    album: Album
-    duration: str
-    duration_seconds: int
-    isExplicit: bool  # only on videos
-    feedbackTokens: FeedbackTokens
-    videoType: str
-    year: None
-    thumbnails: list[Thumbnail]
+    artists: list[YouTubeMusicArtist]
+    duration: int
+    video_id: str
+
+
+class YouTubeMusicSong(_YouTubeMusicResultType):
+    album: YouTubeMusicAlbum | None
+    is_explicit: bool
+
+    @validator("album")
+    def must_not_be_single(cls, v: YouTubeMusicAlbum, values) -> YouTubeMusicAlbum | None:
+        if v.name == values["title"]:
+            return None
+
+        return v
+
+
+class YouTubeMusicVideo(_YouTubeMusicResultType):
+    views: int
+
+
+YouTubeTopResult: t.TypeAlias = YouTubeMusicSong | YouTubeMusicVideo | None
+
+
+class YoutubeMusicSearch(BaseModel):
+    top_result: YouTubeMusicSong | YouTubeMusicVideo | None
+    songs: list[YouTubeMusicSong]
+    videos: list[YouTubeMusicVideo]
