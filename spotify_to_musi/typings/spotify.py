@@ -39,6 +39,10 @@ class SpotifyPlaylist(BaseModel):
     def cover_image_url(self) -> str:
         return self.images[0].url
 
+    @property
+    def track_count(self) -> int:
+        return self.tracks.total
+
 
 ### --- liked songs --- ###
 
