@@ -112,7 +112,7 @@ async def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist)
     spotify_tracks = [SpotifyTrack(**t["track"]) for t in spotify_track_items]
     spotify_tracks = filter_spotify_tracks(spotify_tracks)
 
-    tracks = [covert_spotify_track_to_track(t) for t in spotify_tracks]
+    tracks = covert_spotify_tracks_to_tracks(spotify_tracks)
 
     rich.print(f"[green]FETCHED:[/green] {spotify_playlist.name} ({len(tracks)} tracks)")
 
@@ -128,16 +128,11 @@ def covert_spotify_track_to_track(spotify_track: SpotifyTrack) -> Track:
     return Track(
         name=spotify_track.name,
         duration=spotify_track.duration,
-        artists=parse_obj_as(list[Artist], spotify_track.artists),
+        artists=parse_obj_as(tuple[Artist, ...], spotify_track.artists),
     )
 
 
-async def main():
-    await init()
-
-    spotify_playlists = await fetch_spotify_playlists()
-    spotify_liked_tracks = await fetch_spotify_liked_tracks()
-
+async def covert_spotify_playlists_to_playlists(spotify_playlists: list[SpotifyPlaylist]) -> tuple[Playlist, ...]:
     playlists_tasks: list[asyncio.Task[Playlist]] = []
 
     for spotify_playlist in spotify_playlists:
@@ -146,11 +141,28 @@ async def main():
 
         playlists_tasks.append(task)
 
-    playlists = await asyncio.gather(*playlists_tasks)
-    liked_tracks = [covert_spotify_track_to_track(t) for t in spotify_liked_tracks]
+    playlists: list[Playlist] = await asyncio.gather(*playlists_tasks)
+    return tuple(playlists)
+
+
+def covert_spotify_tracks_to_tracks(spotify_tracks: list[SpotifyTrack]) -> tuple[Track, ...]:
+    return tuple(covert_spotify_track_to_track(t) for t in spotify_tracks)
+
+
+async def main():
+    await init()
+
+    spotify_playlists = await fetch_spotify_playlists()
+    spotify_liked_tracks = await fetch_spotify_liked_tracks()
+
+    playlists = await covert_spotify_playlists_to_playlists(spotify_playlists)
+    liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
 
     rich.print(playlists)
     rich.print(len(playlists))
+
+    rich.print(liked_tracks)
+    rich.print(len(liked_tracks))
 
 
 if __name__ == "__main__":

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
 from dataclasses import field
+
+
+def validate_tuple_isnt_empty(value: tuple) -> tuple:
+    if len(value) == 0:
+        raise ValueError("Tuple can't be empty")
+    return value
 
 
 class Artist(BaseModel):
@@ -13,7 +19,11 @@ class Artist(BaseModel):
 class Track(BaseModel):
     name: str
     duration: int
-    artists: list[Artist] = Field(min_items=1)
+    artists: tuple[Artist, ...]
+
+    @validator("artists")
+    def validate_artists(cls, v: tuple) -> tuple:
+        return validate_tuple_isnt_empty(v)
 
     @property
     def query(self) -> str:
@@ -23,9 +33,14 @@ class Track(BaseModel):
 @dataclass
 class Playlist:
     name: str = field(compare=False)
+    track_count: int = field(init=False, compare=False)
     id: str
-    cover_image_url: str = field(compare=False)
-    tracks: list[Track] = field(default_factory=list, repr=True, compare=False)
+    cover_image_url: str = field(repr=False, compare=False)
+    tracks: tuple[Track, ...] = field(repr=False, compare=False)
+
+    def __post_init__(self):
+        self.track_count = len(self.tracks)
+        validate_tuple_isnt_empty(self.tracks)
 
 
 if __name__ == "__main__":
@@ -33,20 +48,39 @@ if __name__ == "__main__":
         name="test",
         id="test",
         cover_image_url="test",
-        tracks=[
+        tracks=(
             Track(
                 name="test",
                 duration=100,
-                artists=[Artist(name="test")],
+                artists=(Artist(name="test"),),
             ),
-        ],
+            Track(
+                name="test2",
+                duration=100,
+                artists=(Artist(name="test2"),),
+            ),
+        ),
     )
+    try:
+        pl2 = Playlist(
+            name="test",
+            id="test",
+            cover_image_url="test",
+            tracks=tuple(),
+        )
+    except ValueError as e:
+        print("Expected Error:", e)
+    else:
+        raise Exception("Expected ValueError")
 
-    pl2 = Playlist(
+    track1 = Track(
         name="test",
-        id="test",
-        cover_image_url="test",
-        tracks=[],
+        duration=100,
+        artists=(Artist(name="test"),),
     )
 
-    print(pl1 == pl2)
+    track2 = Track(
+        name="test",
+        duration=100,
+        artists=tuple(),
+    )
