@@ -17,11 +17,7 @@ class Track(BaseModel):
 
     @property
     def query(self) -> str:
-        base = f"{self.artists[0].name} - {self.name}"
-        if len(self.artists) > 1:
-            formatted_features = " & ".join(x.name for x in self.artists[1:])
-            base += f"(feat. {formatted_features}"
-        return base
+        return f"{self.artists[0].name} - {self.name}"
 
 
 @dataclass
