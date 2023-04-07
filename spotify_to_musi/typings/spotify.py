@@ -1,140 +1,77 @@
 from __future__ import annotations
 
-from typing import TypedDict
+from pydantic import BaseModel
 
 
-# --- all --- #
-
-
-class SpotifyExternalUrls(TypedDict):
-    spotify: str
-
-
-class SpotifyImage(TypedDict):
-    height: int
+class SpotifyImage(BaseModel):
     url: str
-    width: int
+    width: int | None
+    height: int | None
 
 
-class SpotifyArtist(TypedDict):
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    name: str
-    type: str
-    uri: str
-
-
-class SpotifyAlbum(TypedDict):
-    album_type: str | None
-    artists: list[SpotifyArtist]
-    external_urls: SpotifyExternalUrls
-    href: str | None
-    id: str | None
-    images: list[SpotifyImage]
-    name: str | None
-    release_date: str | None
-    release_date_precision: str | None
-    total_tracks: int  # might not exist if is_local?
-    type: str
-    uri: str | None
-
-
-class SpotifyTrack(TypedDict):
-    album: SpotifyAlbum
-    artists: list[SpotifyArtist]
-    disc_number: int
-    duration_ms: int
-    episode: bool  # might not exist always?
-    explicit: bool
-    external_ids: SpotifyExternalIds
-    external_urls: SpotifyExternalUrls
-    href: str | None
-    id: str | None
-    is_local: bool  # might not exist always?
-    name: str
-    popularity: int
-    preview_url: str | None
-    track: bool  # might not exist if is_local?
-    track_number: int
-    type: str
-    uri: str
-
-
-# --- current user playlists --- #
-
-
-class SpotifyPlaylistOwner(TypedDict):
+class SpotifyPlaylistOwner(BaseModel):
     display_name: str
-    external_urls: SpotifyExternalUrls
     href: str
     id: str
     type: str
     uri: str
 
 
-class SpotifyPlaylistTracks(TypedDict):
+class SpotifyBasicTrack(BaseModel):
     href: str
     total: int
 
 
-class SpotifyPlaylist(TypedDict):
-    collaborative: bool
-    description: str
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    images: list[SpotifyImage]
+class SpotifyPlaylist(BaseModel):
     name: str
-    owner: SpotifyPlaylistOwner
-    primary_color: None
     public: bool
-    snapshot_id: str
-    tracks: SpotifyPlaylistTracks
-    type: str
-    uri: str
-
-
-# --- playlist items --- #
-
-
-class SpotifyPlaylistAddedBy(TypedDict):
-    external_urls: SpotifyExternalUrls
-    href: str
+    collaborative: bool
     id: str
-    type: str
-    uri: str
-
-
-class SpotifyExternalIds(TypedDict):
-    isrc: str
-
-
-class SpotifyVideoThumbnail(TypedDict):
-    url: str | None
-
-
-class SpotifyPlaylistItem(TypedDict):
-    added_at: str
-    added_by: SpotifyPlaylistAddedBy
-    is_local: bool
-    primary_color: None
-    track: SpotifyTrack | None
-    video_thumbnail: SpotifyVideoThumbnail
-
-
-# --- liked songs --- #
-
-
-class SpotifyArtistsItem(TypedDict):
-    external_urls: SpotifyExternalUrls
+    description: str
     href: str
-    id: str
+    uri: str
+    # type: t.Literal['playlist']
+    # owner: SpotifyPlaylistOwner
+    images: list[SpotifyImage]
+    tracks: SpotifyBasicTrack
+
+    @property
+    def cover_image_url(self) -> str:
+        return self.images[0].url
+
+
+### --- liked songs --- ###
+
+
+class SpotifyArtist(BaseModel):
+    href: str
     name: str
+    id: str
     type: str
     uri: str
 
 
-class SpotifyLikedSong(TypedDict):
-    added_at: str
-    track: SpotifyTrack
+class SpotifyTrack(BaseModel):
+    name: str
+    id: str
+    duration_ms: int
+    href: str
+    popularity: int
+    # reference: https://hexdocs.pm/spotify_web_api/Spotify.Tracks.html#t:popularity/0
+    # The popularity of the track. The value will be between 0 and 100, with 100 being the most popular. The popularity of a track is a value between 0 and 100, with 100 being the most popular. The popularity is calculated by algorithm and is based, in the most part, on the total number of plays the track has had and how recent those plays are.
+    explicit: bool
+    is_local: bool = False
+    artists: list[SpotifyArtist]
+    # available_markets: Union[List, List[str]]
+    # track_number: int
+    # type: t.Literal['track']
+    # uri: str
+    # album: SpotifyAlbum
+    # disc_number: int
+    # external_ids: ExternalIds
+    # external_urls: ExternalUrls
+    # preview_url: Optional[str]
+
+    @property
+    def duration(self) -> int:
+        return self.duration_ms // 1000
