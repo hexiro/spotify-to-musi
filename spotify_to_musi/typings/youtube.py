@@ -1,7 +1,10 @@
 import typing as t
-from pydantic import BaseModel, validator
 
-from typings.core import Track
+from typings.core import Playlist, Track, validate_tuple_isnt_empty
+
+from pydantic import BaseModel, validator
+from pydantic.dataclasses import dataclass
+from dataclasses import field
 
 
 class YouTubeMusicArtist(BaseModel):
@@ -47,3 +50,17 @@ class YouTubeMusicSearch(BaseModel):
 class YouTubeTrack(Track):
     is_explicit: bool | None
     video_id: str
+
+
+@dataclass
+class YouTubePlaylist(Playlist):
+    tracks: tuple[YouTubeTrack, ...] = field(repr=False, compare=False)
+
+
+if __name__ == "__main__":
+    youtube_playlist = YouTubePlaylist(
+        name="test",
+        id="test",
+        tracks=tuple(),
+        cover_image_url="test",
+    )

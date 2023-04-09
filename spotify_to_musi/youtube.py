@@ -5,8 +5,15 @@ import typing as t
 import rich
 
 import ytmusic
-from typings.core import Track, Artist
-from typings.youtube import YouTubeTrack, YouTubeMusicResult, YouTubeMusicArtist, YouTubeMusicSong, YouTubeMusicVideo
+from typings.core import Playlist, Track, Artist
+from typings.youtube import (
+    YouTubePlaylist,
+    YouTubeTrack,
+    YouTubeMusicResult,
+    YouTubeMusicArtist,
+    YouTubeMusicSong,
+    YouTubeMusicVideo,
+)
 
 
 def youtube_result_score(youtube_result: YouTubeMusicResult, track: Track) -> float:
@@ -116,7 +123,7 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
 
     # value might need to be tweaked later
     if top_score < 1:
-        rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.query} ({round(top_score, 3)})")
+        rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} ({round(top_score, 3)})")
         return None
 
     # rich.print(options)
@@ -140,7 +147,7 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
     )
 
 
-async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> list[YouTubeTrack]:
+async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> tuple[YouTubeTrack]:
     youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []
 
     for track in tracks:
@@ -149,6 +156,29 @@ async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> list[Yo
         youtube_tracks_tasks.append(task)
 
     youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
-    youtube_tracks: list[YouTubeTrack] = [x for x in youtube_tracks if x is not None]
+    youtube_tracks: tuple[YouTubeTrack] = tuple(x for x in youtube_tracks if x is not None)
 
     return youtube_tracks
+
+
+async def convert_playlist_to_youtube_playlist(playlist: Playlist) -> YouTubePlaylist:
+    youtube_tracks = await convert_tracks_to_youtube_tracks(playlist.tracks)
+    return YouTubePlaylist(
+        name=playlist.name,
+        tracks=youtube_tracks,
+        id=playlist.id,
+        cover_image_url=playlist.cover_image_url,
+    )
+
+
+async def convert_playlists_to_youtube_playlists(playlists: t.Iterable[Playlist]) -> tuple[YouTubePlaylist]:
+    youtube_playlists_tasks: list[asyncio.Task[YouTubePlaylist]] = []
+
+    for playlist in playlists:
+        coro = convert_playlist_to_youtube_playlist(playlist)
+        task = asyncio.create_task(coro)
+        youtube_playlists_tasks.append(task)
+
+    youtube_playlists: tuple[YouTubePlaylist] = await asyncio.gather(*youtube_playlists_tasks)  # type: ignore
+
+    return youtube_playlists

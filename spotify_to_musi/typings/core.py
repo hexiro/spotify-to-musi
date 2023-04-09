@@ -31,6 +31,13 @@ class Track(BaseModel):
     def query(self) -> str:
         return f"{self.artists[0].name} - {self.name}"
 
+    @property
+    def colorized_query(self) -> str:
+        """
+        Colorized query used w/ rich lib for printing
+        """
+        return f"[bold white]{self.artists[0].name}[/bold white] - [gray]{self.name}[/gray]"
+
 
 @dataclass
 class Playlist:
