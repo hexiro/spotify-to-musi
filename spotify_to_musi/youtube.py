@@ -1,8 +1,9 @@
 import asyncio
-
 import typing as t
 
 import rich
+
+import tracks_cache
 
 import ytmusic
 from typings.core import Playlist, Track, Artist
@@ -12,7 +13,6 @@ from typings.youtube import (
     YouTubeMusicResult,
     YouTubeMusicArtist,
     YouTubeMusicSong,
-    YouTubeMusicVideo,
 )
 
 
@@ -96,7 +96,39 @@ def album_score(real_album_name: str | None, result_album_name: str | None) -> f
     return 0
 
 
+def convert_youtube_track_to_track(youtube_track: YouTubeTrack) -> Track:
+    return Track(
+        name=youtube_track.name,
+        duration=youtube_track.duration,
+        artists=tuple(Artist(name=a.name) for a in youtube_track.artists),
+        album_name=youtube_track.album_name,
+        is_explicit=bool(youtube_track.is_explicit),
+    )
+
+
+def convert_youtube_tracks_to_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> list[Track]:
+    return [convert_youtube_track_to_track(yt) for yt in youtube_tracks]
+
+
 async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
+    # cached_video_ids = await tracks_cache.cached_video_ids()
+    cached_youtube_tracks = await tracks_cache.load_cached_youtube_tracks()
+
+    # i tried using a set of frozen pydantic models,
+    # but pylance didn't detect it as being hashable and
+    # i (assume) this will still be much faster than duplicating youtube music searches so im okay with this
+    for cached_youtube_track in cached_youtube_tracks:
+        if cached_youtube_track.name != track.name:
+            continue
+        if cached_youtube_track.duration != track.duration:
+            continue
+        if cached_youtube_track.artists != track.artists:
+            continue
+
+        rich.print("[bold green]CACHED:[/bold green] " + track.colorized_query)
+
+        return cached_youtube_track
+
     youtube_music_search = await ytmusic.search_music(track.query)
 
     if not youtube_music_search:
@@ -131,6 +163,7 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
 
     album_name: str | None = None
     is_explicit: bool | None = None
+
     if isinstance(youtube_music_result, YouTubeMusicSong):
         if youtube_music_result.album:
             album_name = youtube_music_result.album.name
@@ -138,9 +171,12 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
         is_explicit = youtube_music_result.is_explicit
 
     return YouTubeTrack(
-        name=youtube_music_result.title,
-        duration=youtube_music_result.duration,
-        artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
+        name=track.name,
+        duration=track.duration,
+        artists=track.artists,
+        youtube_name=youtube_music_result.title,
+        youtube_duration=youtube_music_result.duration,
+        youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
         album_name=album_name,
         is_explicit=is_explicit,
         video_id=youtube_music_result.video_id,
@@ -156,7 +192,7 @@ async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> tuple[Y
         youtube_tracks_tasks.append(task)
 
     youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
-    youtube_tracks: tuple[YouTubeTrack] = tuple(x for x in youtube_tracks if x is not None)
+    youtube_tracks: tuple[YouTubeTrack, ...] = tuple(x for x in youtube_tracks if x is not None)
 
     return youtube_tracks
 

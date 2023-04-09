@@ -1,6 +1,6 @@
 import typing as t
 
-from typings.core import Playlist, Track, validate_tuple_isnt_empty
+from typings.core import Playlist, Track, Artist
 
 from pydantic import BaseModel, validator
 from pydantic.dataclasses import dataclass
@@ -48,6 +48,9 @@ class YouTubeMusicSearch(BaseModel):
 
 
 class YouTubeTrack(Track):
+    youtube_name: str
+    youtube_duration: int
+    youtube_artists: tuple[Artist, ...]
     is_explicit: bool | None
     video_id: str
 

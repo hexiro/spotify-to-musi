@@ -4,6 +4,7 @@ import rich
 
 import spotify
 import youtube
+import tracks_cache
 
 
 async def main() -> None:
@@ -15,7 +16,9 @@ async def main() -> None:
 
     youtube_liked_tracks = await youtube.convert_tracks_to_youtube_tracks(liked_tracks[:10])
 
-    rich.print(youtube_liked_tracks)
+    # rich.print(youtube_liked_tracks)
+
+    await tracks_cache.cache_youtube_tracks(youtube_liked_tracks)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,6 @@ APP_DATA = _app_data()
 
 STM_PATH = APP_DATA / "spotify-to-musi"
 STM_PATH.mkdir(exist_ok=True)
-SPOTIFY_CACHE_PATH = STM_PATH / "spotify.cache.json"
-SPOTIFY_DATA_PATH = STM_PATH / "spotify.data.json"
-DATA_CACHE_PATH = STM_PATH / "data.cache.json"
+SPOTIFY_CACHE_PATH = STM_PATH / "spotify-cache.json"
+SPOTIFY_DATA_PATH = STM_PATH / "spotify-data.json"
+YOUTUBE_DATA_CACHE_PATH = STM_PATH / "youtube-data-cache.json"
