@@ -1,6 +1,8 @@
 import typing as t
 from pydantic import BaseModel, validator
 
+from typings.core import Track
+
 
 class YouTubeMusicArtist(BaseModel):
     name: str
@@ -12,7 +14,7 @@ class YouTubeMusicAlbum(BaseModel):
 
 class _YouTubeMusicResultType(BaseModel):
     title: str
-    artists: list[YouTubeMusicArtist]
+    artists: tuple[YouTubeMusicArtist, ...]
     duration: int
     video_id: str
 
@@ -33,10 +35,15 @@ class YouTubeMusicVideo(_YouTubeMusicResultType):
     views: int
 
 
-YouTubeTopResult: t.TypeAlias = YouTubeMusicSong | YouTubeMusicVideo | None
+YouTubeMusicResult = YouTubeMusicSong | YouTubeMusicVideo
 
 
-class YoutubeMusicSearch(BaseModel):
-    top_result: YouTubeMusicSong | YouTubeMusicVideo | None
+class YouTubeMusicSearch(BaseModel):
+    top_result: YouTubeMusicResult | None
     songs: list[YouTubeMusicSong]
     videos: list[YouTubeMusicVideo]
+
+
+class YouTubeTrack(Track):
+    is_explicit: bool | None
+    video_id: str

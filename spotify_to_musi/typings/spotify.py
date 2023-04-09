@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
+import typing as t
 
 
 class SpotifyImage(BaseModel):
@@ -55,6 +56,23 @@ class SpotifyArtist(BaseModel):
     uri: str
 
 
+class SpotifyAlbum(BaseModel):
+    album_group: t.Literal["single"] | str  # not sure what other options are
+    album_type: t.Literal["single"] | str  # not sure what other options are
+    artists: list[SpotifyArtist]
+    # 'external_urls': ExternalUrls
+    href: str
+    id: str
+    images: list[SpotifyImage]
+    is_playable: bool
+    name: str
+    release_date: str
+    release_date_precision: str
+    total_tracks: int
+    type: t.Literal["album"] | str  # not sure what other options are
+    uri: str
+
+
 class SpotifyTrack(BaseModel):
     name: str
     id: str
@@ -70,7 +88,7 @@ class SpotifyTrack(BaseModel):
     # track_number: int
     # type: t.Literal['track']
     # uri: str
-    # album: SpotifyAlbum
+    album: SpotifyAlbum
     # disc_number: int
     # external_ids: ExternalIds
     # external_urls: ExternalUrls
@@ -79,3 +97,11 @@ class SpotifyTrack(BaseModel):
     @property
     def duration(self) -> int:
         return self.duration_ms // 1000
+
+    @property
+    def album_name(self) -> str | None:
+        # song is a single and has the 'single' as the album name, i represent this as None internally to help with calucations later
+        if self.album.album_type == "single" or self.album.album_group == "single" or self.album.total_tracks == 1:
+            return None
+
+        return self.album.name

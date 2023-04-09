@@ -4,7 +4,6 @@ import os
 import aiofiles
 import rich
 
-import spotipy
 from pydantic import parse_obj_as
 
 from paths import SPOTIFY_CACHE_PATH
@@ -129,6 +128,8 @@ def covert_spotify_track_to_track(spotify_track: SpotifyTrack) -> Track:
         name=spotify_track.name,
         duration=spotify_track.duration,
         artists=parse_obj_as(tuple[Artist, ...], spotify_track.artists),
+        album_name=spotify_track.album_name,
+        is_explicit=spotify_track.explicit,
     )
 
 
@@ -145,25 +146,23 @@ async def covert_spotify_playlists_to_playlists(spotify_playlists: list[SpotifyP
     return tuple(playlists)
 
 
-def covert_spotify_tracks_to_tracks(spotify_tracks: list[SpotifyTrack]) -> tuple[Track, ...]:
+def covert_spotify_tracks_to_tracks(spotify_tracks: t.Iterable[SpotifyTrack]) -> tuple[Track, ...]:
     return tuple(covert_spotify_track_to_track(t) for t in spotify_tracks)
 
 
-async def main():
-    await init()
-
-    spotify_playlists = await fetch_spotify_playlists()
-    spotify_liked_tracks = await fetch_spotify_liked_tracks()
-
-    playlists = await covert_spotify_playlists_to_playlists(spotify_playlists)
-    liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
-
-    rich.print(playlists)
-    rich.print(len(playlists))
-
-    rich.print(liked_tracks)
-    rich.print(len(liked_tracks))
-
-
 if __name__ == "__main__":
+
+    async def main():
+        spotify_playlists = await fetch_spotify_playlists()
+        spotify_liked_tracks = await fetch_spotify_liked_tracks()
+
+        playlists = await covert_spotify_playlists_to_playlists(spotify_playlists)
+        liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
+
+        rich.print(playlists)
+        rich.print(len(playlists))
+
+        rich.print(liked_tracks)
+        rich.print(len(liked_tracks))
+
     asyncio.run(main())

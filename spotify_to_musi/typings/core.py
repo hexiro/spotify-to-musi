@@ -20,6 +20,8 @@ class Track(BaseModel):
     name: str
     duration: int
     artists: tuple[Artist, ...]
+    album_name: str | None
+    is_explicit: bool
 
     @validator("artists")
     def validate_artists(cls, v: tuple) -> tuple:
@@ -53,11 +55,15 @@ if __name__ == "__main__":
                 name="test",
                 duration=100,
                 artists=(Artist(name="test"),),
+                album_name="test",
+                is_explicit=False,
             ),
             Track(
                 name="test2",
                 duration=100,
                 artists=(Artist(name="test2"),),
+                album_name="test2",
+                is_explicit=False,
             ),
         ),
     )
@@ -77,10 +83,14 @@ if __name__ == "__main__":
         name="test",
         duration=100,
         artists=(Artist(name="test"),),
+        album_name="test",
+        is_explicit=False,
     )
 
     track2 = Track(
         name="test",
         duration=100,
         artists=tuple(),
+        album_name="test",
+        is_explicit=False,
     )

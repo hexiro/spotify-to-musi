@@ -6,7 +6,7 @@ import typing as t
 import rich
 
 
-from typings.youtube import YoutubeMusicSearch, YouTubeMusicSong, YouTubeMusicVideo, YouTubeTopResult
+from typings.youtube import YouTubeMusicSearch, YouTubeMusicSong, YouTubeMusicVideo, YouTubeMusicResult
 
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
@@ -78,7 +78,7 @@ def views_as_integer(views: str) -> int:
     return int(float(num_string) * multipliers[unit_string])
 
 
-async def search_music(query: str):
+async def search_music(query: str) -> YouTubeMusicSearch | None:
     """
     Search YouTube music for a query.
     """
@@ -177,7 +177,7 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict):
         text = run["text"]
         artists.append({"name": text})
 
-    data["artists"] = artists
+    data["artists"] = tuple(artists)
 
     return data
 
@@ -205,7 +205,7 @@ def parse_video_id(song_or_video_data: dict) -> str:
     return video_id
 
 
-def parse_top_result(top_result_data: dict) -> YouTubeTopResult:
+def parse_top_result(top_result_data: dict) -> YouTubeMusicResult | None:
     navigation_endpoint = top_result_data["title"]["runs"][0]["navigationEndpoint"]
 
     # artist
@@ -309,9 +309,9 @@ def is_top_result(tab: dict) -> bool:
     return tab_key == TOP_RESULT_KEY
 
 
-def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
+def parse_yt_music_response(data: dict) -> YouTubeMusicSearch | None:
     if "contents" not in data:
-        return YoutubeMusicSearch(top_result=None, songs=[], videos=[])
+        return None
 
     if "tabbedSearchResultsRenderer":
         categories = tabs_from_scope(data)
@@ -321,15 +321,14 @@ def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
     categories = categories["sectionListRenderer"]["contents"]
 
     if not categories:
-        return YoutubeMusicSearch(top_result=None, songs=[], videos=[])
+        return None
 
-    top_result: YouTubeTopResult = None
+    top_result: YouTubeMusicResult | None = None
 
     songs: list[YouTubeMusicSong] = []
     videos: list[YouTubeMusicVideo] = []
 
     for category in categories:
-
         key: CategoryKey = list(category.keys())[0]
 
         # skip all 'informational' categories
@@ -352,7 +351,7 @@ def parse_yt_music_response(data: dict) -> YoutubeMusicSearch:
             else:
                 videos.append(song_or_video)
 
-    return YoutubeMusicSearch(
+    return YouTubeMusicSearch(
         top_result=top_result,
         songs=songs,
         videos=videos,
@@ -390,12 +389,13 @@ if __name__ == "__main__":
             "Destory Lonely - VETERAN (feat. Ken Carson)",
         ]
 
-        tasks: list[asyncio.Task[YoutubeMusicSearch]] = []
+        tasks: list[asyncio.Task[YouTubeMusicSearch | None]] = []
 
         for query in queries:
             tasks.append(asyncio.create_task(search_music(query)))
 
-        results = await asyncio.gather(*tasks)
+        results: list[YouTubeMusicSearch | None] = await asyncio.gather(*tasks) # type: ignore
+        results: list[YouTubeMusicSearch] = [r for r in results if r is not None]
         top_results = [r.top_result for r in results]
 
         rich.print(top_results)
