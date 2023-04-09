@@ -1,4 +1,4 @@
-from spotify_to_musi.typings.musi import MusiItem
+from typings.musi import MusiItem
 
 
 def upload_to_musi() -> MusiBackupResponse:

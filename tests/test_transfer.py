@@ -1,23 +1,101 @@
+from dataclasses import dataclass
 import pytest
-
-from ytmusicapi import YTMusic
-from spotify_to_musi.main import search_youtube_for_track
-from spotify_to_musi.typings.core import Track
-
-ytmusic = YTMusic()
-
-track_to_expected_video_id: dict[Track, str] = {
-    Track(artist="Trippie Redd", song="Demon Time (feat. Ski Mask The Slump God)", spotify_duration=159): "uoyaDo9B5Eo",
-    Track(artist="$NOT", song="Doja", spotify_duration=171): "lxfljkiR5Xc",
-    Track(artist="Lil Uzi Vert", song="Do What I Want", spotify_duration=175): "ra1cvbdYhps",
-    Track(artist="Lil Uzi Vert", song="Erase Your Social", spotify_duration=199): "X21M7w6IkoM",
-    Track(artist="Offset", song="How Did I Get Here (feat. J. Cole)", spotify_duration=276): "v8PRzHXYcII",
-    Track(artist="Baby Keem", song="ORANGE SODA", spotify_duration=129): "PTv7cJjNig8"
-}
+import rich
 
 
-@pytest.mark.parametrize("track,expected_video_id", track_to_expected_video_id.items())
-def test_transfer(track: Track, expected_video_id: str) -> None:
-    track_Data = search_youtube_for_track(track, ytmusic)
-    assert track_Data is not None
-    assert track_Data.video_id == expected_video_id
+from spotify_to_musi import ytmusic
+from spotify_to_musi.typings.core import Artist, Track
+from spotify_to_musi.typings.youtube import YouTubeMusicResult
+from spotify_to_musi.youtube import youtube_result_score
+
+pytest_plugins = ("pytest_asyncio",)
+
+
+track_to_expected_video_id: list[tuple[Track, str]] = [
+    (
+        Track(
+            name="Demon Time (feat. Ski Mask The Slump God)",
+            artists=(Artist(name="Trippie Redd"),),
+            duration=159,
+            album_name="Trip At Knight (Complete Edition)",
+            is_explicit=True,
+        ),
+        "uoyaDo9B5Eo",
+    ),
+    (
+        Track(
+            name="Doja",
+            artists=(Artist(name="$NOT"),),
+            duration=171,
+            album_name="Ethereal",
+            is_explicit=True,
+        ),
+        "lxfljkiR5Xc",
+    ),
+    (
+        Track(
+            name="Do What I Want",
+            artists=(Artist(name="Lil Uzi Vert"),),
+            duration=175,
+            album_name="The Perfect LUV Tape",
+            is_explicit=True,
+        ),
+        "ra1cvbdYhps",
+    ),
+    (
+        Track(
+            name="Erase Your Social",
+            artists=(Artist(name="Lil Uzi Vert"),),
+            duration=199,
+            album_name="The Perfect LUV Tape",
+            is_explicit=True,
+        ),
+        "X21M7w6IkoM",
+    ),
+    (
+        Track(
+            name="How Did I Get Here (feat. J. Cole)",
+            artists=(Artist(name="Offset"), Artist(name="J. Cole")),
+            duration=276,
+            album_name="FATHER OF 4",
+            is_explicit=True,
+        ),
+        "v8PRzHXYcII",
+    ),
+    (
+        Track(
+            name="ORANGE SODA",
+            artists=(Artist(name="Baby Keem"),),
+            duration=129,
+            album_name="DIE FOR MY BITCH",
+            is_explicit=True,
+        ),
+        "PTv7cJjNig8",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("track,expected_video_id", track_to_expected_video_id)
+async def test_transfer(track: Track, expected_video_id: str) -> None:
+    options: list[YouTubeMusicResult] = []
+
+    youtube_music_search = await ytmusic.search_music(track.query)
+    assert youtube_music_search is not None
+
+    if youtube_music_search.top_result:
+        options.append(youtube_music_search.top_result)
+
+    for youtube_music_song in youtube_music_search.songs:
+        options.append(youtube_music_song)
+
+    for youtube_music_video in youtube_music_search.videos:
+        options.append(youtube_music_video)
+
+    options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
+
+    best_option = options[0]
+
+    rich.print([(option, youtube_result_score(option, track)) for option in options])
+
+    assert best_option.video_id == expected_video_id
