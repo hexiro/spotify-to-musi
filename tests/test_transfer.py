@@ -15,7 +15,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
     (
         Track(
             name="Demon Time (feat. Ski Mask The Slump God)",
-            artists=(Artist(name="Trippie Redd"),),
+            artists=(Artist(name="Trippie Redd"), Artist(name="Ski Mask The Slump God")),
             duration=159,
             album_name="Trip At Knight (Complete Edition)",
             is_explicit=True,
@@ -25,12 +25,12 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
     (
         Track(
             name="Doja",
-            artists=(Artist(name="$NOT"),),
+            artists=(Artist(name="$NOT"), Artist(name="A$AP Rocky")),
             duration=171,
             album_name="Ethereal",
             is_explicit=True,
         ),
-        "lxfljkiR5Xc",
+        "s477U69XPlA",
     ),
     (
         Track(
@@ -96,6 +96,7 @@ async def test_transfer(track: Track, expected_video_id: str) -> None:
 
     best_option = options[0]
 
+    rich.print(track.query)
     rich.print([(option, youtube_result_score(option, track)) for option in options])
 
     assert best_option.video_id == expected_video_id

@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
 from dataclasses import field
 
+from commons import remove_features_from_title, remove_parens
+
 
 def validate_tuple_isnt_empty(value: tuple) -> tuple:
     if len(value) == 0:
@@ -23,13 +25,26 @@ class Track(BaseModel):
     album_name: str | None
     is_explicit: bool
 
+    @validator("name")
+    def validate_name(cls, v: str) -> str:
+        """
+        Remove parens and features from title
+        (will be added back in the query)
+        """
+        v = remove_parens(v)
+        v = remove_features_from_title(v)
+        return v
+
     @validator("artists")
     def validate_artists(cls, v: tuple) -> tuple:
         return validate_tuple_isnt_empty(v)
 
     @property
     def query(self) -> str:
-        return f"{self.artists[0].name} - {self.name}"
+        base_query = f"{self.artists[0].name} - {self.name}"
+        if len(self.artists) > 1:
+            base_query += f" (feat. {' & '.join(a.name for a in self.artists[1:])})"
+        return base_query
 
     @property
     def colorized_query(self) -> str:

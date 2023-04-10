@@ -2,6 +2,7 @@ import asyncio
 import typing as t
 
 import rich
+from commons import remove_parens, remove_features_from_title
 
 import tracks_cache
 
@@ -14,6 +15,14 @@ from typings.youtube import (
     YouTubeMusicArtist,
     YouTubeMusicSong,
 )
+
+
+def remove_artist_from_title(title: str):
+    dash_index = title.find(" - ")
+    if dash_index == -1:
+        return title
+
+    return title[dash_index + 3 :]
 
 
 def youtube_result_score(youtube_result: YouTubeMusicResult, track: Track) -> float:
@@ -36,13 +45,18 @@ def duration_score(real_duration: int, result_duration: int) -> float:
 
     if diff == 0:
         return 1
-
-    return 1 / diff
+    elif diff <= 10:
+        return round(1 / diff, 2)
+    else:
+        return max(-1, -(round(diff / 10, 2) - 1))
 
 
 def title_score(real_title: str, result_title: str) -> float:
-    real_title = real_title.lower()
-    result_title = result_title.lower()
+    def remove_extraneous_data(title: str):
+        return remove_artist_from_title(remove_features_from_title(remove_parens(title)))
+
+    real_title = remove_extraneous_data(real_title.lower())
+    result_title = remove_extraneous_data(result_title.lower())
 
     if real_title == result_title:
         return 1
@@ -79,13 +93,13 @@ def artists_score(real_artists: tuple[Artist, ...], result_artists: tuple[YouTub
 
 def album_score(real_album_name: str | None, result_album_name: str | None) -> float:
     if real_album_name is None and result_album_name is None:
-        return 0.5
+        return 0
 
     if real_album_name is None or result_album_name is None:
         return 0
 
-    real_album_name = real_album_name.lower()
-    result_album_name = result_album_name.lower()
+    real_album_name = remove_parens(real_album_name.lower())
+    result_album_name = remove_parens(result_album_name.lower())
 
     if real_album_name == result_album_name:
         return 1
