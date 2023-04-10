@@ -1,8 +1,9 @@
 import asyncio
 import typing as t
+import httpx
 
 import rich
-from commons import remove_parens, remove_features_from_title
+from commons import remove_parens, remove_features_from_title, gather_with_concurrency
 
 import tracks_cache
 
@@ -124,28 +125,29 @@ def convert_youtube_tracks_to_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -
     return [convert_youtube_track_to_track(yt) for yt in youtube_tracks]
 
 
-async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
+async def convert_track_to_youtube_track(track: Track, client: httpx.AsyncClient) -> YouTubeTrack | None:
     # cached_video_ids = await tracks_cache.cached_video_ids()
-    cached_youtube_tracks = await tracks_cache.load_cached_youtube_tracks()
+    # cached_youtube_tracks = await tracks_cache.load_cached_youtube_tracks()
 
-    # i tried using a set of frozen pydantic models,
-    # but pylance didn't detect it as being hashable and
-    # i (assume) this will still be much faster than duplicating youtube music searches so im okay with this
-    for cached_youtube_track in cached_youtube_tracks:
-        if cached_youtube_track.name != track.name:
-            continue
-        if cached_youtube_track.duration != track.duration:
-            continue
-        if cached_youtube_track.artists != track.artists:
-            continue
+    # # i tried using a set of frozen pydantic models,
+    # # but pylance didn't detect it as being hashable and
+    # # i (assume) this will still be much faster than duplicating youtube music searches so im okay with this
+    # for cached_youtube_track in cached_youtube_tracks:
+    #     if cached_youtube_track.name != track.name:
+    #         continue
+    #     if cached_youtube_track.duration != track.duration:
+    #         continue
+    #     if cached_youtube_track.artists != track.artists:
+    #         continue
 
-        rich.print("[bold green]CACHED:[/bold green] " + track.colorized_query)
+    #     rich.print("[bold green]CACHED:[/bold green] " + track.colorized_query)
 
-        return cached_youtube_track
+    #     return cached_youtube_track
 
-    youtube_music_search = await ytmusic.search_music(track.query)
+    youtube_music_search = await ytmusic.search_music(track.query, client=client)
 
     if not youtube_music_search:
+        rich.print(f"[bold red]ERROR:[/bold red] {track.colorized_query} (no results)")
         return None
 
     options: list[YouTubeMusicResult] = []
@@ -162,6 +164,7 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
     options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
 
     if not options:
+        rich.print(f"[bold red]ERROR:[/bold red] {track.colorized_query} (no results)")
         return None
 
     youtube_music_result = options[0]
@@ -171,7 +174,8 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
     if top_score < 1:
         rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} ({round(top_score, 3)})")
         return None
-
+    else:
+        rich.print(f"[bold green]FOUND:[/bold green] {track.colorized_query} ({round(top_score, 3)})")
     # rich.print(options)
     # rich.print(youtube_result_score(options[0], track))
 
@@ -197,22 +201,36 @@ async def convert_track_to_youtube_track(track: Track) -> YouTubeTrack | None:
     )
 
 
-async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> tuple[YouTubeTrack]:
+async def convert_tracks_to_youtube_tracks(
+    tracks: t.Iterable[Track], client: httpx.AsyncClient | None = None
+) -> tuple[YouTubeTrack]:
+    close_client: bool = False
+    if not client:
+        client = httpx.AsyncClient()
+        close_client = True
+
     youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []
 
     for track in tracks:
-        coro = convert_track_to_youtube_track(track)
+        coro = convert_track_to_youtube_track(track, client)
         task = asyncio.create_task(coro)
         youtube_tracks_tasks.append(task)
 
-    youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
+    youtube_tracks: list[YouTubeTrack | None] = await gather_with_concurrency(100, *youtube_tracks_tasks)  # type: ignore
     youtube_tracks: tuple[YouTubeTrack, ...] = tuple(x for x in youtube_tracks if x is not None)
+
+    if close_client:
+        await client.aclose()
 
     return youtube_tracks
 
 
-async def convert_playlist_to_youtube_playlist(playlist: Playlist) -> YouTubePlaylist:
-    youtube_tracks = await convert_tracks_to_youtube_tracks(playlist.tracks)
+async def convert_playlist_to_youtube_playlist(
+    playlist: Playlist,
+    client: httpx.AsyncClient | None = None,
+) -> YouTubePlaylist:
+    youtube_tracks = await convert_tracks_to_youtube_tracks(playlist.tracks, client)
+
     return YouTubePlaylist(
         name=playlist.name,
         tracks=youtube_tracks,
@@ -229,6 +247,6 @@ async def convert_playlists_to_youtube_playlists(playlists: t.Iterable[Playlist]
         task = asyncio.create_task(coro)
         youtube_playlists_tasks.append(task)
 
-    youtube_playlists: tuple[YouTubePlaylist] = await asyncio.gather(*youtube_playlists_tasks)  # type: ignore
+    youtube_playlists = await gather_with_concurrency(2, *youtube_playlists_tasks)
 
-    return youtube_playlists
+    return youtube_playlists  # type: ignore

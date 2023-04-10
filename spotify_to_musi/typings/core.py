@@ -40,10 +40,23 @@ class Track(BaseModel):
         return validate_tuple_isnt_empty(v)
 
     @property
+    def primary_artist(self) -> Artist:
+        return self.artists[0]
+
+    @property
+    def secondary_artists(self) -> tuple[Artist, ...]:
+        return self.artists[1:]
+
+    @property
+    def featuring_text(self) -> str:
+        if self.secondary_artists:
+            return f" (feat. {' & '.join(a.name for a in self.secondary_artists)})"
+        return ""
+
+    @property
     def query(self) -> str:
-        base_query = f"{self.artists[0].name} - {self.name}"
-        if len(self.artists) > 1:
-            base_query += f" (feat. {' & '.join(a.name for a in self.artists[1:])})"
+        base_query = f"{self.primary_artist.name} - {self.name}"
+        base_query += self.featuring_text
         return base_query
 
     @property
@@ -51,14 +64,14 @@ class Track(BaseModel):
         """
         Colorized query used w/ rich lib for printing
         """
-        return f"[bold white]{self.artists[0].name}[/bold white] - [gray]{self.name}[/gray]"
+        return f"[bold white]{self.primary_artist.name}[/bold white] - [gray]{self.name}{self.featuring_text}[/gray]"
 
 
 @dataclass
 class Playlist:
+    id: str
     name: str = field(compare=False)
     track_count: int = field(init=False, compare=False)
-    id: str
     cover_image_url: str = field(repr=False, compare=False)
     tracks: tuple[Track, ...] = field(repr=False, compare=False)
 

@@ -50,7 +50,10 @@ def duration_in_seconds(duration_str: str) -> int:
     duration = 0
 
     for i, part in enumerate(split):
-        duration += int(part) * multipliers[i]
+        if part.isdigit():
+            duration += int(part) * multipliers[i]
+        else:
+            rich.print(f"[bold deep_pink1]BUG:[/bold deep_pink1] invalid duration string {duration_str!r}")
 
     return duration
 
@@ -78,31 +81,36 @@ def views_as_integer(views: str) -> int:
     return int(float(num_string) * multipliers[unit_string])
 
 
-async def search_music(query: str) -> YouTubeMusicSearch | None:
+async def search_music(query: str, client: httpx.AsyncClient | None = None) -> YouTubeMusicSearch | None:
     """
     Search YouTube music for a query.
     """
 
     body = {"context": YT_MUSIC_CONTEXT, "query": query}
+    url = YT_MUSIC_BASE_API + "search"
 
-    async with httpx.AsyncClient() as client:
-        url = YT_MUSIC_BASE_API + "search"
-        resp = await client.post(
-            url,
-            json=body,
-            params=YT_MUSIC_PARAMS,
-            headers=YT_MUSIC_HEADERS,
-        )
+    close_client: bool = False
 
+    if not client:
+        client = httpx.AsyncClient()
+        close_client = True
+
+    resp = await client.post(
+        url,
+        json=body,
+        params=YT_MUSIC_PARAMS,
+        headers=YT_MUSIC_HEADERS,
+    )
     data = resp.json()
 
-    # with open(f"data-{time.time()}.json", "w") as f:
-    #     json.dump(data, f, indent=4)
+    if close_client:
+        await client.aclose()
 
     if "error" in data:
         raise Exception(data["error"])
 
     return parse_yt_music_response(data)
+       
 
 
 def tabs_from_scope(data: dict) -> dict:
@@ -394,7 +402,7 @@ if __name__ == "__main__":
         for query in queries:
             tasks.append(asyncio.create_task(search_music(query)))
 
-        results: list[YouTubeMusicSearch | None] = await asyncio.gather(*tasks) # type: ignore
+        results: list[YouTubeMusicSearch | None] = await asyncio.gather(*tasks)  # type: ignore
         results: list[YouTubeMusicSearch] = [r for r in results if r is not None]
         top_results = [r.top_result for r in results]
 
