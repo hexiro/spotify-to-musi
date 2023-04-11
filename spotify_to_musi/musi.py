@@ -1,13 +1,13 @@
 import asyncio
+import hashlib
 import json
 import typing as t
 import uuid
 
 import httpx
-import requests
-from requests_toolbelt import MultipartEncoder
 import rich
 
+import pydantic.json
 import pydantic.error_wrappers
 
 from typings.youtube import YouTubeTrack, YouTubePlaylist
@@ -53,6 +53,26 @@ def convert_playlists_to_musi_playlists(youtube_playlists: t.Iterable[YouTubePla
     return tuple(musi_playlists)
 
 
+def generate_musi_uuid(musi_videos: list[MusiVideo]) -> uuid.UUID:
+    """
+    Generate a deterministic UUID based on the video IDs of the provided MusiVideo-s.
+    """
+    video_ids: set[str] = set()
+
+    for musi_video in musi_videos:
+        if musi_video.video_id in video_ids:
+            continue
+        video_ids.add(musi_video.video_id)
+
+    video_ids_json = json.dumps(sorted(video_ids), default=pydantic.json.pydantic_encoder)
+    video_ids_json_bytes = video_ids_json.encode("utf-8")
+
+    video_ids_hash = hashlib.md5(video_ids_json_bytes)
+    hexdigest = video_ids_hash.hexdigest()
+
+    return uuid.uuid3(uuid.NAMESPACE_OID, hexdigest)
+
+
 async def upload_to_musi(
     musi_playlists: t.Iterable[MusiPlaylist],
     musi_library: MusiLibrary,
@@ -75,7 +95,7 @@ async def upload_to_musi(
             musi_video_dicts.append(musi_video.dict())  # type: ignore
             musi_video_ids.add(musi_video.video_id)
 
-    musi_uuid = uuid.uuid4()
+    musi_uuid = generate_musi_uuid(musi_videos)
     payload = {
         "library": musi_library_dict,
         "playlist_items": musi_video_dicts,
@@ -112,8 +132,6 @@ async def upload_to_musi(
         url = "https://feelthemusi.com/api/v4/backups/create"
         resp = await client.post(url, content=content)
 
-    rich.print(resp.text)
-
     try:
         backup = MusiResponse(**resp.json())
     except (pydantic.error_wrappers.ValidationError, json.decoder.JSONDecodeError):
@@ -121,68 +139,3 @@ async def upload_to_musi(
         raise
 
     return backup
-
-
-if __name__ == "__main__":
-
-    async def main() -> None:
-        url = "https://httpbin.org/anything"
-        payload = {
-            "library": {
-                "ot": "whatever",
-                "thing": "whatever",
-            },
-            "playlist_items": [
-                {
-                    "ot": "whatever",
-                    "thing": "whatever",
-                },
-                {
-                    "ot": "whatever",
-                    "thing": "whatever",
-                },
-            ],
-            "playlists": [
-                {
-                    "ot": "whatever",
-                    "thing": "whatever",
-                },
-                {
-                    "ot": "whatever",
-                    "thing": "whatever",
-                },
-            ],
-        }
-
-        musi_uuid = uuid.uuid4()
-
-        boundary_str = f"Boundary+Musi{musi_uuid}"
-        boundary = f"--{boundary_str}".encode()
-
-        headers = {
-            "Content-Type": f"multipart/form-data; boundary={boundary_str};",
-            "User-Agent": "Musi/25691 CFNetwork/1206 Darwin/20.1.0",
-        }
-
-        # hack because httpx doesn't appear to support custom boundaries like requests does.
-        content = (
-            boundary
-            + b"\n"
-            + b'Content-Disposition: form-data; name="data"'
-            + b"\n\n"
-            + json.dumps(payload).encode()
-            + b"\n"
-            + boundary
-            + b"\n"
-            + b'Content-Disposition: form-data; name="uuid"'
-            + b"\n\n"
-            + str(musi_uuid).encode()
-            + b"\n"
-            + boundary
-            + b"--\n"
-        )
-
-        async with httpx.AsyncClient(headers=headers) as client:
-            response2 = await client.post(url, content=content)
-
-    asyncio.run(main())
