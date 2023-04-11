@@ -106,7 +106,7 @@ def tabs_from_scope(data: dict) -> dict:
     return tabs
 
 
-def parse_title_and_subtitle_data(title_data: dict, video_data: dict):
+def parse_title_and_subtitle_data(title_data: dict, video_data: dict) -> dict | None:
     """
     Extracts video data from nested data structures.
     Should be a dict with a key 'run' containing a list of dictionaries.
@@ -143,6 +143,15 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict):
     old_runs = video_data["runs"]
     new_runs: list[Run] = []
 
+    # weird youtube music bug where a song is bugged but still shows up in search results
+    # which leads to 'olds_runs' being the channel name, the dot and then the duration.
+    # example: https://i.imgur.com/VFHXY4F.png
+    # as you can see the song/video is greyed out but still has a channel name and title
+    # i think this could mean that the video was removed from youtube.
+    # either way this is uncommon enough to where the result can just be skipped :3
+    if len(old_runs) <= 3:
+        return None
+
     for run in old_runs:
         text = run["text"]
         if text.startswith(" ") and text.endswith(" "):
@@ -161,9 +170,9 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict):
     # https://music.youtube.com/playlist?list=PLvIVuxuLeDM4Xb9DWBrDo6lEMAKbCBjdw
     duration_or_episode_type = new_runs.pop()["text"]
     if ":" not in duration_or_episode_type:
-        duration = 0
-    else:
-        duration = duration_in_seconds(duration_or_episode_type)
+        return None
+
+    duration = duration_in_seconds(duration_or_episode_type)
 
     data = {
         "title": title,
@@ -237,6 +246,10 @@ def parse_top_result(top_result_data: dict) -> YouTubeMusicResult | None:
     video_data = top_result_data["subtitle"]
 
     title_and_subtitle_data = parse_title_and_subtitle_data(title_data, video_data)
+
+    if not title_and_subtitle_data:
+        return None
+
     video_id = parse_video_id(top_result_data)
 
     if page_type == "MUSIC_VIDEO_TYPE_ATV":
@@ -263,8 +276,11 @@ def is_song_explicit(song_or_video_data: dict) -> bool:
     return False
 
 
-def parse_song_or_video(song_or_video_data: dict) -> YouTubeMusicSong | YouTubeMusicVideo:
+def parse_song_or_video(song_or_video_data: dict) -> YouTubeMusicSong | YouTubeMusicVideo | None:
     title_and_subtitle_data = parse_song_or_video_title_and_subtitle_data(song_or_video_data)
+    if not title_and_subtitle_data:
+        return None
+
     video_id = parse_video_id(song_or_video_data)
 
     is_song = "album" in title_and_subtitle_data
@@ -277,7 +293,7 @@ def parse_song_or_video(song_or_video_data: dict) -> YouTubeMusicSong | YouTubeM
     return YouTubeMusicVideo(**title_and_subtitle_data, video_id=video_id)
 
 
-def parse_song_or_video_title_and_subtitle_data(song_or_video_data: dict) -> dict:
+def parse_song_or_video_title_and_subtitle_data(song_or_video_data: dict) -> dict | None:
     long_key = "musicResponsiveListItemFlexColumnRenderer"
 
     title_data = song_or_video_data["flexColumns"][0][long_key]["text"]
@@ -305,7 +321,10 @@ def parse_category(song_or_video_data: dict) -> list[YouTubeMusicSong | YouTubeM
 
     for content in contents:
         content = content[long_key]
-        results.append(parse_song_or_video(content))
+        result = parse_song_or_video(content)
+        if not result:
+            continue
+        results.append(result)
 
     return results
 
