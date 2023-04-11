@@ -35,7 +35,7 @@ async def cache_youtube_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> None
 
 
 @AsyncLRU(maxsize=None)  # type: ignore
-async def load_cached_youtube_tracks() -> t.Iterable[YouTubeTrack]:
+async def load_cached_youtube_tracks() -> list[YouTubeTrack]:
     """
     Load cached tracks from disk.
     Only intended to be used at the start of the program to load the cache,

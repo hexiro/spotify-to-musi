@@ -9,6 +9,26 @@ from typings.core import Track
 from typings.youtube import YouTubeTrack
 
 
+class MusiTrack(YouTubeTrack):
+    created_date: float = Field(default_factory=lambda: time.time())
+
+    def musi_item(self, index: int) -> MusiItem:
+        return MusiItem(
+            video_id=self.video_id,
+            pos=index,
+            cd=int(self.created_date),
+        )
+
+    def musi_video(self) -> MusiVideo:
+        return MusiVideo(
+            video_id=self.video_id,
+            video_name=self.name,
+            video_creator=self.youtube_artists[0].name,
+            video_duration=self.youtube_duration,
+            created_date=self.created_date,
+        )
+
+
 class MusiItemDict(t.TypedDict):
     cd: int  # int(time.time())
     pos: int  # index
@@ -16,9 +36,9 @@ class MusiItemDict(t.TypedDict):
 
 
 class MusiItem(BaseModel):
-    video_id: str
-    pos: int
     cd: int = Field(default_factory=lambda: int(time.time()))
+    pos: int
+    video_id: str
 
 
 class MusiPlaylistDict(t.TypedDict):
@@ -41,7 +61,15 @@ class MusiPlaylist(BaseModel):
 
     def dict(self, **kwargs) -> MusiPlaylistDict:
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
-        return {"items": items, **super().dict(**kwargs)}  # type: ignore
+        super_dict = super().dict(**kwargs)
+        return {
+            "ot": super_dict["ot"],
+            "items": items,
+            "name": super_dict["name"],
+            "type": super_dict["type"],
+            "date": super_dict["date"],
+            "ciu": super_dict["ciu"],
+        }
 
 
 class MusiLibraryDict(t.TypedDict):
@@ -54,13 +82,14 @@ class MusiLibraryDict(t.TypedDict):
 class MusiLibrary(BaseModel):
     tracks: tuple[MusiTrack, ...] = Field(exclude=True)
     # items: list[MusiItem]
-    date: int = Field(default_factory=lambda: int(time.time()))
-    name: t.Literal["My Library"] = Field(default="My Library", const=True)
     ot: t.Literal["custom"] = Field(default="custom", const=True)
+    name: t.Literal["My Library"] = Field(default="My Library", const=True)
+    date: int = Field(default_factory=lambda: int(time.time()))
 
     def dict(self, **kwargs) -> MusiLibraryDict:
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
-        return {"items": items, **super().dict(**kwargs)}  # type: ignore
+        super_dict = super().dict(**kwargs)
+        return {"ot": super_dict["ot"], "items": items, "name": super_dict["name"], "date": super_dict["date"]}
 
 
 class MusiVideoDict(t.TypedDict):
@@ -69,26 +98,6 @@ class MusiVideoDict(t.TypedDict):
     video_name: str
     video_creator: str  # channel name
     video_id: str
-
-
-class MusiTrack(YouTubeTrack):
-    created_date: float = Field(default_factory=lambda: time.time())
-
-    def musi_item(self, index: int) -> MusiItem:
-        return MusiItem(
-            video_id=self.video_id,
-            pos=index,
-            cd=int(self.created_date),
-        )
-
-    def musi_video(self) -> MusiVideo:
-        return MusiVideo(
-            video_id=self.video_id,
-            video_name=self.name,
-            video_creator=self.youtube_artists[0].name,
-            video_duration=self.youtube_duration,
-            created_date=self.created_date,
-        )
 
 
 class MusiVideo(BaseModel):

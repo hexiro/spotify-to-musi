@@ -52,8 +52,6 @@ def duration_in_seconds(duration_str: str) -> int:
     for i, part in enumerate(split):
         if part.isdigit():
             duration += int(part) * multipliers[i]
-        else:
-            rich.print(f"[bold deep_pink1]BUG:[/bold deep_pink1] invalid duration string {duration_str!r}")
 
     return duration
 
@@ -110,7 +108,6 @@ async def search_music(query: str, client: httpx.AsyncClient | None = None) -> Y
         raise Exception(data["error"])
 
     return parse_yt_music_response(data)
-       
 
 
 def tabs_from_scope(data: dict) -> dict:
@@ -167,9 +164,19 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict):
     if "navigationEndpoint" not in new_runs[0]:
         new_runs.pop(0)
 
+    # youtube music has 'episode' types
+    # not exactly sure what they are but they have a totally different format
+    # will be something like 'Rap'
+    # https://music.youtube.com/playlist?list=PLvIVuxuLeDM4Xb9DWBrDo6lEMAKbCBjdw
+    duration_or_episode_type = new_runs.pop()["text"]
+    if ":" not in duration_or_episode_type:
+        duration = 0
+    else:
+        duration = duration_in_seconds(duration_or_episode_type)
+
     data = {
         "title": title,
-        "duration": duration_in_seconds(new_runs.pop()["text"]),
+        "duration": duration,
     }
 
     views_or_album: str = new_runs.pop()["text"]

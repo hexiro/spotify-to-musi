@@ -113,7 +113,7 @@ async def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist)
 
     tracks = covert_spotify_tracks_to_tracks(spotify_tracks)
 
-    rich.print(f"[bold green]FETCHED:[/bold green] {spotify_playlist.name} ({len(tracks)} tracks)")
+    rich.print(f"[bold green]SPOTIFY:[/bold green] {spotify_playlist.name} ({len(tracks)} tracks)")
 
     return Playlist(
         id=spotify_playlist.id,

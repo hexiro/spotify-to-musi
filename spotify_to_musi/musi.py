@@ -1,6 +1,7 @@
 import asyncio
 import json
 import typing as t
+import uuid
 
 import httpx
 import requests
@@ -15,7 +16,7 @@ from typings.musi import (
     MusiTrack,
     MusiPlaylist,
     MusiLibraryDict,
-    MusiItemDict,
+    MusiVideoDict,
     MusiPlaylistDict,
 )
 
@@ -63,25 +64,54 @@ async def upload_to_musi(
             musi_videos.append(musi_track.musi_video())
 
     musi_library_dict: MusiLibraryDict = musi_library.dict()
-    musi_video_dicts: list[MusiItemDict] = [musi_item.dict() for musi_item in musi_videos]  # type: ignore
     musi_playlist_dicts: list[MusiPlaylistDict] = [musi_item.dict() for musi_item in musi_playlists]  # type: ignore
+    musi_video_dicts: list[MusiVideoDict] = []
 
+    musi_video_ids: set[str] = set()
+    for musi_video in musi_videos:
+        if musi_video.video_id not in musi_video_ids:
+            musi_video_dicts.append(musi_video.dict())  # type: ignore
+            musi_video_ids.add(musi_video.video_id)
+
+    musi_uuid = uuid.uuid4()
     payload = {
-        "library": musi_library_dict,
-        "playlist_items": musi_video_dicts,
-        "playlists": musi_playlist_dicts,
+        "data": {
+            "library": musi_library_dict,
+            "playlist_items": musi_video_dicts,
+            "playlists": musi_playlist_dicts,
+        },
+        "uuid": str(musi_uuid),
     }
 
-    # tracks_uuid = compute_tracks_uuid(liked_songs, playlists)
+    # multipart_encoder = MultipartEncoder(
+    #     fields={"data": json.dumps(payload), "uuid": str(musi_uuid)},
+    #     boundary=f"Boundary+Musi{musi_uuid}",
+    # )
+    # headers = {
+    #     "Content-Type": multipart_encoder.content_type,
+    #     "User-Agent": "Musi/25691 CFNetwork/1206 Darwin/20.1.0",
+    # }
+    # resp = requests.post(
+    #     "https://feelthemusi.com/api/v4/backups/create", data=multipart_encoder, headers=headers  # type: ignore
+    # )
 
-    # backup: MusiBackupResponse = resp.json()
-    # progress.advance(task_sending_to_musi)
-    # logger.info(f"{backup['success']} code={backup['code']}")
-    # code = backup.get("code")
+    # rich.print(payload)
+
+    headers = {
+        "User-Agent": "Musi/25691 CFNetwork/1206 Darwin/20.1.0",
+    }
+
+    async with httpx.AsyncClient() as client:
+        url = "https://feelthemusi.com/api/v4/backups/create"
+        resp = await client.post(url, data=payload, headers=headers)
+
+    rich.print(resp.text)
+
+    backup = MusiResponse(**resp.json())
+    return backup
 
 
 if __name__ == "__main__":
-    import uuid
 
     async def main() -> None:
         url = "https://httpbin.org/anything"
