@@ -4,9 +4,9 @@ import os
 import aiofiles
 import rich
 
+import pydantic.error_wrappers
 from pydantic import parse_obj_as
 
-from paths import SPOTIFY_CACHE_PATH
 
 from typings.core import Playlist, Track, Artist
 from typings.spotify import SpotifyTrack, SpotifyPlaylist
@@ -75,6 +75,24 @@ def filter_spotify_tracks(spotify_tracks: list[SpotifyTrack]) -> list[SpotifyTra
     return spotify_tracks
 
 
+def spotify_track_items_to_spotify_tracks(spotify_track_items: list[dict[str, t.Any]]) -> list[SpotifyTrack]:
+    spotify_tracks: list[SpotifyTrack] = []
+    for spotify_track_item in spotify_track_items:
+        try:
+            track = SpotifyTrack(**spotify_track_item["track"])
+        # weird spotify api bug where track, artist, and album name is blank
+        # (usually because the track is by 'various artists' the spotify thing)
+        # but w/o this information we can't fetch the track so just skip it
+        except pydantic.error_wrappers.ValidationError:
+            continue
+        else:
+            spotify_tracks.append(track)
+
+    spotify_tracks = filter_spotify_tracks(spotify_tracks)
+    return spotify_tracks
+    
+
+
 async def fetch_spotify_liked_tracks() -> list[SpotifyTrack]:
     await init()
 
@@ -87,9 +105,7 @@ async def fetch_spotify_liked_tracks() -> list[SpotifyTrack]:
         liked_tracks_resp = await spotify.user_tracks(offset=offset)
         liked_tracks_items.extend(liked_tracks_resp["items"])  # type: ignore
 
-    liked_tracks = [SpotifyTrack(**t["track"]) for t in liked_tracks_items]
-    liked_tracks = filter_spotify_tracks(liked_tracks)
-
+    liked_tracks: list[SpotifyTrack] = spotify_track_items_to_spotify_tracks(liked_tracks_items)
     return liked_tracks
 
 
@@ -108,9 +124,7 @@ async def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist)
     for spotify_tracks_item in spotify_tracks_items:
         spotify_track_items.extend(spotify_tracks_item["items"])
 
-    spotify_tracks = [SpotifyTrack(**t["track"]) for t in spotify_track_items]
-    spotify_tracks = filter_spotify_tracks(spotify_tracks)
-
+    spotify_tracks = spotify_track_items_to_spotify_tracks(spotify_track_items)
     tracks = covert_spotify_tracks_to_tracks(spotify_tracks)
 
     rich.print(f"[bold green]SPOTIFY:[/bold green] {spotify_playlist.name} ({len(tracks)} tracks)")
@@ -124,13 +138,14 @@ async def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist)
 
 
 def covert_spotify_track_to_track(spotify_track: SpotifyTrack) -> Track:
-    return Track(
+    track = Track(
         name=spotify_track.name,
         duration=spotify_track.duration,
         artists=parse_obj_as(tuple[Artist, ...], spotify_track.artists),
         album_name=spotify_track.album_name,
         is_explicit=spotify_track.explicit,
     )
+    return track
 
 
 async def covert_spotify_playlists_to_playlists(spotify_playlists: list[SpotifyPlaylist]) -> tuple[Playlist, ...]:

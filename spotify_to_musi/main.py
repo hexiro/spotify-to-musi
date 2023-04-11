@@ -9,7 +9,9 @@ import tracks_cache
 
 
 async def main() -> None:
-    spotify_to_musi_rich_text = f"[bold][green4]SPOTIFY-[/green4][grey53]TO[/grey53]-[dark_orange3]MUSI[/dark_orange3][/bold]"
+    spotify_to_musi_rich_text = (
+        f"[bold][green4]SPOTIFY-[/green4][grey53]TO[/grey53]-[dark_orange3]MUSI[/dark_orange3][/bold]"
+    )
 
     spotify_playlists = await spotify.fetch_spotify_playlists()
     rich.print(f"{spotify_to_musi_rich_text} loaded {len(spotify_playlists)} spotify playlists")
@@ -17,7 +19,6 @@ async def main() -> None:
     rich.print(f"{spotify_to_musi_rich_text} loaded {len(spotify_liked_tracks)} spotify liked tracks")
 
     # TODO: de-deduplicate tracks when requesting ytm
-    # TODO: fix bug where query is ' - '
 
     playlists = await spotify.covert_spotify_playlists_to_playlists(spotify_playlists)
     rich.print(f"{spotify_to_musi_rich_text} fetched {len(spotify_playlists)} playlists")

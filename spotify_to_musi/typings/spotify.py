@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 import typing as t
 
 
@@ -55,6 +55,12 @@ class SpotifyArtist(BaseModel):
     type: str
     uri: str
 
+    @validator("name")
+    def validate_name(cls, v: str) -> str:
+        if v == "":
+            raise ValueError("Artist name can't be empty")
+        return v
+
 
 class SpotifyAlbum(BaseModel):
     album_group: t.Literal["single"] | str  # not sure what other options are
@@ -71,6 +77,12 @@ class SpotifyAlbum(BaseModel):
     total_tracks: int
     type: t.Literal["album"] | str  # not sure what other options are
     uri: str
+
+    @validator("name")
+    def validate_name(cls, v: str) -> str:
+        if v == "":
+            raise ValueError("Album name can't be empty")
+        return v
 
 
 class SpotifyTrack(BaseModel):
@@ -93,6 +105,12 @@ class SpotifyTrack(BaseModel):
     # external_ids: ExternalIds
     # external_urls: ExternalUrls
     # preview_url: Optional[str]
+
+    @validator("name")
+    def validate_name(cls, v: str) -> str:
+        if v == "":
+            raise ValueError("Track name can't be empty")
+        return v
 
     @property
     def duration(self) -> int:
