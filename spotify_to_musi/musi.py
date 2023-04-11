@@ -8,6 +8,8 @@ import requests
 from requests_toolbelt import MultipartEncoder
 import rich
 
+import pydantic.error_wrappers
+
 from typings.youtube import YouTubeTrack, YouTubePlaylist
 from typings.musi import (
     MusiResponse,
@@ -75,39 +77,49 @@ async def upload_to_musi(
 
     musi_uuid = uuid.uuid4()
     payload = {
-        "data": {
-            "library": musi_library_dict,
-            "playlist_items": musi_video_dicts,
-            "playlists": musi_playlist_dicts,
-        },
-        "uuid": str(musi_uuid),
+        "library": musi_library_dict,
+        "playlist_items": musi_video_dicts,
+        "playlists": musi_playlist_dicts,
     }
 
-    # multipart_encoder = MultipartEncoder(
-    #     fields={"data": json.dumps(payload), "uuid": str(musi_uuid)},
-    #     boundary=f"Boundary+Musi{musi_uuid}",
-    # )
-    # headers = {
-    #     "Content-Type": multipart_encoder.content_type,
-    #     "User-Agent": "Musi/25691 CFNetwork/1206 Darwin/20.1.0",
-    # }
-    # resp = requests.post(
-    #     "https://feelthemusi.com/api/v4/backups/create", data=multipart_encoder, headers=headers  # type: ignore
-    # )
-
-    # rich.print(payload)
+    boundary_str = f"Boundary+Musi{musi_uuid}"
+    boundary = f"--{boundary_str}".encode()
 
     headers = {
+        "Content-Type": f"multipart/form-data; boundary={boundary_str};",
         "User-Agent": "Musi/25691 CFNetwork/1206 Darwin/20.1.0",
     }
 
-    async with httpx.AsyncClient() as client:
+    # hack because httpx doesn't appear to support custom boundaries like requests does.
+    content = (
+        boundary
+        + b"\n"
+        + b'Content-Disposition: form-data; name="data"'
+        + b"\n\n"
+        + json.dumps(payload).encode()
+        + b"\n"
+        + boundary
+        + b"\n"
+        + b'Content-Disposition: form-data; name="uuid"'
+        + b"\n\n"
+        + str(musi_uuid).encode()
+        + b"\n"
+        + boundary
+        + b"--\n"
+    )
+
+    async with httpx.AsyncClient(headers=headers) as client:
         url = "https://feelthemusi.com/api/v4/backups/create"
-        resp = await client.post(url, data=payload, headers=headers)
+        resp = await client.post(url, content=content)
 
     rich.print(resp.text)
 
-    backup = MusiResponse(**resp.json())
+    try:
+        backup = MusiResponse(**resp.json())
+    except (pydantic.error_wrappers.ValidationError, json.decoder.JSONDecodeError):
+        rich.print(f"[bold red]ERROR:[/bold red] {resp.text}]")
+        raise
+
     return backup
 
 
@@ -142,22 +154,35 @@ if __name__ == "__main__":
             ],
         }
 
-        tracks_uuid = uuid.uuid4()
-        multipart_encoder = MultipartEncoder(
-            fields={"data": json.dumps(payload), "uuid": str(tracks_uuid)},
-            boundary=f"Boundary+Musi{tracks_uuid}",
-        )
+        musi_uuid = uuid.uuid4()
+
+        boundary_str = f"Boundary+Musi{musi_uuid}"
+        boundary = f"--{boundary_str}".encode()
+
         headers = {
-            "Content-Type": multipart_encoder.content_type,
+            "Content-Type": f"multipart/form-data; boundary={boundary_str};",
             "User-Agent": "Musi/25691 CFNetwork/1206 Darwin/20.1.0",
         }
 
+        # hack because httpx doesn't appear to support custom boundaries like requests does.
+        content = (
+            boundary
+            + b"\n"
+            + b'Content-Disposition: form-data; name="data"'
+            + b"\n\n"
+            + json.dumps(payload).encode()
+            + b"\n"
+            + boundary
+            + b"\n"
+            + b'Content-Disposition: form-data; name="uuid"'
+            + b"\n\n"
+            + str(musi_uuid).encode()
+            + b"\n"
+            + boundary
+            + b"--\n"
+        )
+
         async with httpx.AsyncClient(headers=headers) as client:
-            response1 = await client.post(url, data={"data": json.dumps(payload), "uuid": str(tracks_uuid)})
-
-        response2 = requests.post(url, data=multipart_encoder, headers=headers)  # type: ignore
-
-        rich.print(response1.json())
-        rich.print(response2.json())
+            response2 = await client.post(url, content=content)
 
     asyncio.run(main())

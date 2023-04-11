@@ -14,7 +14,6 @@ async def main() -> None:
     spotify_liked_tracks = await spotify.fetch_spotify_liked_tracks()
     rich.print(f"[bold blue]SPOT-TO-MUSI[/bold blue] loaded {len(spotify_liked_tracks)} spotify liked tracks")
 
-    # TODO: fix multi-part thing with httpx and musi
     # TODO: order songs correctly (by spotify index and just fake a time created?)
     # TODO: de-deduplicate tracks when requesting ytm
 
