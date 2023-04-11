@@ -24,9 +24,10 @@ async def cache_youtube_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> None
     current_youtube_tracks = await load_cached_youtube_tracks()
 
     for youtube_track in current_youtube_tracks:
-        if youtube_track.video_id not in youtube_track_video_ids:
-            youtube_tracks_to_cache.append(youtube_track)
-            youtube_track_video_ids.add(youtube_track.video_id)
+        if youtube_track.video_id in youtube_track_video_ids:
+            continue
+        youtube_tracks_to_cache.append(youtube_track)
+        youtube_track_video_ids.add(youtube_track.video_id)
 
     youtube_tracks_json = json.dumps(youtube_tracks_to_cache, default=pydantic.json.pydantic_encoder)
 

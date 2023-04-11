@@ -54,7 +54,7 @@ def duration_score(real_duration: int, result_duration: int) -> float:
 
 def title_score(real_title: str, result_title: str) -> float:
     def remove_extraneous_data(title: str):
-        return remove_artist_from_title(remove_features_from_title(remove_parens(title)))
+        return remove_artist_from_title(remove_features_from_title(remove_parens(title))).strip()
 
     real_title = remove_extraneous_data(real_title.lower())
     result_title = remove_extraneous_data(result_title.lower())
@@ -139,7 +139,7 @@ async def convert_track_to_youtube_track(track: Track, client: httpx.AsyncClient
         if cached_youtube_track.artists != track.artists:
             continue
 
-        rich.print("[bold green]CACHED:[/bold green] " + track.colorized_query)
+        rich.print("[bold red]YOUTUBE CACHE:[/bold red] " + track.colorized_query)
 
         return cached_youtube_track
 
@@ -205,7 +205,7 @@ async def convert_tracks_to_youtube_tracks(
 ) -> tuple[YouTubeTrack]:
     close_client: bool = False
     if not client:
-        client = httpx.AsyncClient()
+        client = httpx.AsyncClient(timeout=60)
         close_client = True
 
     youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []

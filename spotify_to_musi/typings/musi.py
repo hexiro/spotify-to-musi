@@ -23,7 +23,7 @@ class MusiTrack(YouTubeTrack):
         return MusiVideo(
             video_id=self.video_id,
             video_name=self.name,
-            video_creator=self.youtube_artists[0].name,
+            video_creator=self.artists[0].name,
             video_duration=self.youtube_duration,
             created_date=self.created_date,
         )

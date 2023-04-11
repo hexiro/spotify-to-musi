@@ -54,8 +54,8 @@ def convert_playlists_to_musi_playlists(youtube_playlists: t.Iterable[YouTubePla
 
 
 async def upload_to_musi(
-    musi_library: MusiLibrary,
     musi_playlists: t.Iterable[MusiPlaylist],
+    musi_library: MusiLibrary,
 ) -> MusiResponse:
     musi_videos: list[MusiVideo] = []
 

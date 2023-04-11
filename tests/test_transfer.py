@@ -1,3 +1,4 @@
+import httpx
 import pytest
 import rich
 
@@ -21,6 +22,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
         ),
         "uoyaDo9B5Eo",
     ),
+    # b/c doja cat songs might come up
     (
         Track(
             name="Doja",
@@ -31,6 +33,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
         ),
         "s477U69XPlA",
     ),
+    # b/c same mixtape has a song with same duration (1 second difference)
     (
         Track(
             name="Do What I Want",
@@ -51,6 +54,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
         ),
         "X21M7w6IkoM",
     ),
+    # b/c doesn't have 'song' on youtube music
     (
         Track(
             name="How Did I Get Here (feat. J. Cole)",
@@ -61,6 +65,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
         ),
         "v8PRzHXYcII",
     ),
+    # b/c has multiple official uploads on youtube music
     (
         Track(
             name="ORANGE SODA",
@@ -79,7 +84,9 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
 async def test_transfer(track: Track, expected_video_id: str) -> None:
     options: list[YouTubeMusicResult] = []
 
-    youtube_music_search = await ytmusic.search_music(track.query)
+    async with httpx.AsyncClient() as client:
+        youtube_music_search = await ytmusic.search_music(track.query, client)
+
     assert youtube_music_search is not None
 
     if youtube_music_search.top_result:

@@ -79,19 +79,13 @@ def views_as_integer(views: str) -> int:
     return int(float(num_string) * multipliers[unit_string])
 
 
-async def search_music(query: str, client: httpx.AsyncClient | None = None) -> YouTubeMusicSearch | None:
+async def search_music(query: str, client: httpx.AsyncClient) -> YouTubeMusicSearch | None:
     """
     Search YouTube music for a query.
     """
 
     body = {"context": YT_MUSIC_CONTEXT, "query": query}
     url = YT_MUSIC_BASE_API + "search"
-
-    close_client: bool = False
-
-    if not client:
-        client = httpx.AsyncClient()
-        close_client = True
 
     resp = await client.post(
         url,
@@ -100,9 +94,6 @@ async def search_music(query: str, client: httpx.AsyncClient | None = None) -> Y
         headers=YT_MUSIC_HEADERS,
     )
     data = resp.json()
-
-    if close_client:
-        await client.aclose()
 
     if "error" in data:
         raise Exception(data["error"])
@@ -371,48 +362,3 @@ def parse_yt_music_response(data: dict) -> YouTubeMusicSearch | None:
         songs=songs,
         videos=videos,
     )
-
-
-if __name__ == "__main__":
-
-    async def main() -> None:
-        song_title = "Destroy Lonely - Bane"
-        results = await search_music(song_title)
-        rich.print(results)
-
-    async def test() -> None:
-        # spelt wrong on purpose
-        queries: list[str] = [
-            "Destory Lonely - JETLGGD",
-            "Destory Lonely - BERGDORF",
-            "Destory Lonely - <3MYGNG",
-            "Destory Lonely - VTMNTSCOAT",
-            "Destory Lonely - NOSTYLIST",
-            "Destory Lonely - FAKENGGAS",
-            "Destory Lonely - SOARIN",
-            "Destory Lonely - TURNINUP",
-            "Destory Lonely - LNLY",
-            "Destory Lonely - PRSSURE",
-            "Destory Lonely - ONTHETABLE",
-            "Destory Lonely - SWGSKOOL",
-            "Destory Lonely - CRYSTLCSTLES",
-            "Destory Lonely - DANGEROUS",
-            "Destory Lonely - MKEITSTOP",
-            "Destory Lonely - ONTHEFLOOR",
-            "Destory Lonely - PASSAROUND",
-            "Destory Lonely - OTW",
-            "Destory Lonely - VETERAN (feat. Ken Carson)",
-        ]
-
-        tasks: list[asyncio.Task[YouTubeMusicSearch | None]] = []
-
-        for query in queries:
-            tasks.append(asyncio.create_task(search_music(query)))
-
-        results: list[YouTubeMusicSearch | None] = await asyncio.gather(*tasks)  # type: ignore
-        results: list[YouTubeMusicSearch] = [r for r in results if r is not None]
-        top_results = [r.top_result for r in results]
-
-        rich.print(top_results)
-
-    asyncio.run(test())
