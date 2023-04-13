@@ -1,6 +1,16 @@
 import asyncio
 
 
+def task_description(*, querying: str, color: str, subtype: str | None = None) -> str:
+    desc = f"[bold][{color}]Querying {querying}"
+
+    if subtype is not None:
+        desc += f" [ [white]{subtype}[/white] ] "
+
+    desc += f"[/{color}][/bold]..."
+    return desc
+
+
 def remove_parens(title: str) -> str:
     bracket_groups = (
         ("[", "]"),

@@ -16,21 +16,15 @@ async def main() -> None:
     )
 
     with Progress() as progress:
-        spotify_playlists, spotify_liked_tracks = await spotify.query_spotify(progress)
-
-        return
+        playlists, liked_tracks = await spotify.query_spotify(progress)
 
         # TODO: de-deduplicate tracks when requesting ytm
-
-        playlists = spotify.covert_spotify_playlists_to_playlists(spotify_playlists)
-        rich.print(f"{spotify_to_musi_rich_text} fetched {len(spotify_playlists)} playlists")
-        liked_tracks = spotify.covert_spotify_tracks_to_tracks(spotify_liked_tracks)
-        rich.print(f"{spotify_to_musi_rich_text} fetched {len(liked_tracks)} liked tracks")
+        # TODO: finish implementing progress bars
 
         await tracks_cache.load_cached_youtube_tracks()
 
         youtube_playlists = await youtube.convert_playlists_to_youtube_playlists(playlists)
-        rich.print(f"{spotify_to_musi_rich_text} fetched {len(spotify_playlists)} youtube playlists")
+        rich.print(f"{spotify_to_musi_rich_text} fetched {len(youtube_playlists)} youtube playlists")
         youtube_liked_tracks = await youtube.convert_tracks_to_youtube_tracks(liked_tracks)
         rich.print(f"{spotify_to_musi_rich_text} fetched {len(youtube_liked_tracks)} youtube liked tracks")
 

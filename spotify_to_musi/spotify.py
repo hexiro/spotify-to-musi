@@ -2,9 +2,9 @@ import asyncio
 import json
 import math
 import os
-import sys
 import aiofiles
 import rich
+import typing as t
 
 import pydantic.error_wrappers
 from pydantic import parse_obj_as
@@ -12,7 +12,7 @@ from rich.progress import Progress, TaskID
 
 from typings.core import Playlist, Track, Artist
 from typings.spotify import SpotifyTrack, BasicSpotifyPlaylist, SpotifyPlaylist
-import typing as t
+from commons import task_description
 
 console = rich.get_console()
 
@@ -50,23 +50,25 @@ async def init() -> None:
     await spotify.populate_user_creds()
 
 
-async def query_spotify(progress: Progress) -> tuple[list[SpotifyPlaylist], list[SpotifyTrack]]:
+async def query_spotify(progress: Progress) -> tuple[tuple[Playlist, ...], tuple[Track, ...]]:
     await init()
 
-    def description(subtype: str) -> str:
-        return f"[bold][green]Querying Spotify [ [white]{subtype}[/white] ][/green][/bold]... "
-
-    task_id = progress.add_task(description("Playlists"), start=False)
+    task_id = progress.add_task(task_description(querying="Spotify", subtype="Playlists", color="green"), start=False)
     spotify_basic_playlists = await fetch_basic_spotify_playlists(task_id=task_id, progress=progress)
 
-    task_id = progress.add_task(description("Liked Songs"), start=False)
+    task_id = progress.add_task(task_description(querying="Spotify", subtype="Liked Songs", color="green"), start=False)
     spotify_liked_tracks = await fetch_spotify_liked_tracks(task_id=task_id, progress=progress)
 
-    task_id = progress.add_task(description("Playlist Tracks"), start=False)
+    task_id = progress.add_task(
+        task_description(querying="Spotify", subtype="Playlist Tracks", color="green"), start=False
+    )
 
     spotify_playlists = await load_basic_playlists(spotify_basic_playlists, task_id=task_id, progress=progress)
 
-    return spotify_playlists, spotify_liked_tracks
+    playlists = covert_spotify_playlists_to_playlists(spotify_playlists)
+    liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
+
+    return playlists, liked_tracks
 
 
 async def fetch_basic_spotify_playlists(
@@ -239,7 +241,6 @@ async def fetch_spotify_liked_tracks(
     offset = 0
     while liked_tracks_resp["next"]:  # type: ignore
         offset = len(liked_tracks_items)
-        print(f"{offset=} {total=}")
         liked_tracks_resp = await load_user_tracks(offset=offset, limit=limit)
         liked_tracks_items.extend(liked_tracks_resp["items"])  # type: ignore
 
@@ -286,10 +287,7 @@ if __name__ == "__main__":
 
     async def main():
         with Progress() as progress:
-            spotify_playlists, spotify_liked_tracks = await query_spotify(progress)
-
-        playlists = covert_spotify_playlists_to_playlists(spotify_playlists)
-        liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
+            playlists, liked_tracks = await query_spotify(progress)
 
         rich.print(playlists)
         rich.print(len(playlists))
