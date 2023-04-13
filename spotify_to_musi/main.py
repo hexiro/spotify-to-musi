@@ -20,7 +20,7 @@ async def main() -> None:
 
     # TODO: de-deduplicate tracks when requesting ytm
 
-    playlists = await spotify.covert_spotify_playlists_to_playlists(spotify_playlists)
+    playlists = spotify.covert_spotify_playlists_to_playlists(spotify_playlists)
     rich.print(f"{spotify_to_musi_rich_text} fetched {len(spotify_playlists)} playlists")
     liked_tracks = spotify.covert_spotify_tracks_to_tracks(spotify_liked_tracks)
     rich.print(f"{spotify_to_musi_rich_text} fetched {len(liked_tracks)} liked tracks")

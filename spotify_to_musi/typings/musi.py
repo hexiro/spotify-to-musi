@@ -47,14 +47,14 @@ class MusiPlaylistDict(t.TypedDict):
     name: str
     type: t.Literal["user"]
     date: int  # int(time.time())
-    ciu: str  # playlist cover image (url)
+    ciu: t.NotRequired[str]  # playlist cover image (url)
 
 
 class MusiPlaylist(BaseModel):
     name: str
     tracks: tuple[MusiTrack, ...] = Field(exclude=True)
     # items: list[MusiItem]
-    ciu: str = Field(alias="cover_image_url")
+    ciu: str | None = Field(alias="cover_image_url")
     date: int = Field(default_factory=lambda: int(time.time()))
     ot: t.Literal["custom"] = Field(default="custom", const=True)
     type: t.Literal["user"] = Field(default="user", const=True)
@@ -62,7 +62,8 @@ class MusiPlaylist(BaseModel):
     def dict(self, **kwargs) -> MusiPlaylistDict:
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
         super_dict = super().dict(**kwargs)
-        return {
+
+        musi_playlist_dict: MusiPlaylistDict = {
             "ot": super_dict["ot"],
             "items": items,
             "name": super_dict["name"],
@@ -70,6 +71,10 @@ class MusiPlaylist(BaseModel):
             "date": super_dict["date"],
             "ciu": super_dict["ciu"],
         }
+        if not self.ciu:
+            musi_playlist_dict.pop("ciu")
+
+        return musi_playlist_dict
 
 
 class MusiLibraryDict(t.TypedDict):

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import sys
 import aiofiles
 import rich
 
@@ -9,7 +10,7 @@ from pydantic import parse_obj_as
 
 
 from typings.core import Playlist, Track, Artist
-from typings.spotify import SpotifyTrack, SpotifyPlaylist
+from typings.spotify import SpotifyTrack, BasicSpotifyPlaylist, SpotifyPlaylist
 import typing as t
 
 console = rich.get_console()
@@ -61,9 +62,58 @@ async def fetch_spotify_playlists() -> list[SpotifyPlaylist]:
         playlists_resp = await spotify.user_playlists(offset=offset)
         playlists_items.extend(playlists_resp["items"])  # type: ignore
 
-    playlists = [SpotifyPlaylist(**p) for p in playlists_items]
+    spotify_basic_playlists = [BasicSpotifyPlaylist(**p) for p in playlists_items]
 
-    return playlists
+    playlist_tasks: list[asyncio.Task[SpotifyPlaylist]] = []
+
+    for basic_playlist in spotify_basic_playlists:
+        coro = basic_playlist_to_playlist(basic_playlist)
+        task = asyncio.create_task(coro)
+        playlist_tasks.append(task)
+
+    spotify_playlists: list[SpotifyPlaylist] = await asyncio.gather(*playlist_tasks)
+    return spotify_playlists
+
+
+async def basic_playlist_to_playlist(basic_playlist: BasicSpotifyPlaylist) -> SpotifyPlaylist:
+    await init()
+
+    spotify_tracks = await load_basic_playlist_tracks(basic_playlist)
+
+    playlist = SpotifyPlaylist(
+        name=basic_playlist.name,
+        id=basic_playlist.id,
+        public=basic_playlist.public,
+        collaborative=basic_playlist.collaborative,
+        description=basic_playlist.description,
+        href=basic_playlist.href,
+        uri=basic_playlist.uri,
+        images=basic_playlist.images,
+        tracks=spotify_tracks,
+    )
+
+    return playlist
+
+
+async def load_basic_playlist_tracks(basic_spotify_playlist: BasicSpotifyPlaylist) -> list[SpotifyTrack]:
+    await init()
+
+    spotify_tracks_items_tasks: list[asyncio.Task[list[dict]]] = []
+
+    for offset in range(0, basic_spotify_playlist.tracks.total, 20):
+        coro = spotify.playlist_tracks(playlist_id=basic_spotify_playlist.id, offset=offset)
+        task = asyncio.create_task(coro)
+
+        spotify_tracks_items_tasks.append(task)  # type: ignore
+
+    spotify_tracks_items: list[dict[t.Literal["items"], list[dict]]] = await asyncio.gather(*spotify_tracks_items_tasks)
+    spotify_track_items: list[dict] = []
+
+    for spotify_tracks_item in spotify_tracks_items:
+        spotify_track_items.extend(spotify_tracks_item["items"])
+
+    spotify_tracks = spotify_track_items_to_spotify_tracks(spotify_track_items)
+    return spotify_tracks
 
 
 def filter_spotify_tracks(spotify_tracks: list[SpotifyTrack]) -> list[SpotifyTrack]:
@@ -90,7 +140,6 @@ def spotify_track_items_to_spotify_tracks(spotify_track_items: list[dict[str, t.
 
     spotify_tracks = filter_spotify_tracks(spotify_tracks)
     return spotify_tracks
-    
 
 
 async def fetch_spotify_liked_tracks() -> list[SpotifyTrack]:
@@ -109,23 +158,8 @@ async def fetch_spotify_liked_tracks() -> list[SpotifyTrack]:
     return liked_tracks
 
 
-async def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist) -> Playlist:
-    spotify_tracks_items_tasks: list[asyncio.Task[list[dict]]] = []
-
-    for offset in range(0, spotify_playlist.track_count, 20):
-        coro = spotify.playlist_tracks(playlist_id=spotify_playlist.id, offset=offset)
-        task = asyncio.create_task(coro)
-
-        spotify_tracks_items_tasks.append(task)  # type: ignore
-
-    spotify_tracks_items: list[dict[t.Literal["items"], list[dict]]] = await asyncio.gather(*spotify_tracks_items_tasks)
-    spotify_track_items: list[dict] = []
-
-    for spotify_tracks_item in spotify_tracks_items:
-        spotify_track_items.extend(spotify_tracks_item["items"])
-
-    spotify_tracks = spotify_track_items_to_spotify_tracks(spotify_track_items)
-    tracks = covert_spotify_tracks_to_tracks(spotify_tracks)
+def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist) -> Playlist:
+    tracks = covert_spotify_tracks_to_tracks(spotify_playlist.tracks)
 
     rich.print(f"[bold green]SPOTIFY:[/bold green] {spotify_playlist.name} ({len(tracks)} tracks)")
 
@@ -148,17 +182,8 @@ def covert_spotify_track_to_track(spotify_track: SpotifyTrack) -> Track:
     return track
 
 
-async def covert_spotify_playlists_to_playlists(spotify_playlists: list[SpotifyPlaylist]) -> tuple[Playlist, ...]:
-    playlists_tasks: list[asyncio.Task[Playlist]] = []
-
-    for spotify_playlist in spotify_playlists:
-        coro = covert_spotify_playlist_to_playlist(spotify_playlist)
-        task = asyncio.create_task(coro)
-
-        playlists_tasks.append(task)
-
-    playlists: list[Playlist] = await asyncio.gather(*playlists_tasks)
-    return tuple(playlists)
+def covert_spotify_playlists_to_playlists(spotify_playlists: list[SpotifyPlaylist]) -> tuple[Playlist, ...]:
+    return tuple(covert_spotify_playlist_to_playlist(p) for p in spotify_playlists)
 
 
 def covert_spotify_tracks_to_tracks(spotify_tracks: t.Iterable[SpotifyTrack]) -> tuple[Track, ...]:
@@ -171,7 +196,7 @@ if __name__ == "__main__":
         spotify_playlists = await fetch_spotify_playlists()
         spotify_liked_tracks = await fetch_spotify_liked_tracks()
 
-        playlists = await covert_spotify_playlists_to_playlists(spotify_playlists)
+        playlists = covert_spotify_playlists_to_playlists(spotify_playlists)
         liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
 
         rich.print(playlists)

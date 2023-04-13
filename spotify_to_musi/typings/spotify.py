@@ -18,12 +18,12 @@ class SpotifyPlaylistOwner(BaseModel):
     uri: str
 
 
-class SpotifyBasicTrack(BaseModel):
+class SpotifyBasicTracks(BaseModel):
     href: str
     total: int
 
 
-class SpotifyPlaylist(BaseModel):
+class BasicSpotifyPlaylist(BaseModel):
     name: str
     public: bool
     collaborative: bool
@@ -34,18 +34,7 @@ class SpotifyPlaylist(BaseModel):
     # type: t.Literal['playlist']
     # owner: SpotifyPlaylistOwner
     images: list[SpotifyImage]
-    tracks: SpotifyBasicTrack
-
-    @property
-    def cover_image_url(self) -> str:
-        return self.images[0].url
-
-    @property
-    def track_count(self) -> int:
-        return self.tracks.total
-
-
-### --- liked songs --- ###
+    tracks: SpotifyBasicTracks
 
 
 class SpotifyArtist(BaseModel):
@@ -123,3 +112,17 @@ class SpotifyTrack(BaseModel):
             return None
 
         return self.album.name
+
+
+class SpotifyPlaylist(BasicSpotifyPlaylist):
+    tracks: list[SpotifyTrack]
+
+    @property
+    def cover_image_url(self) -> str | None:
+        if len(self.images) == 0:
+            return None
+        return self.images[0].url
+
+    @property
+    def track_count(self) -> int:
+        return len(self.tracks)

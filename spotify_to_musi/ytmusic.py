@@ -11,10 +11,10 @@ from typings.youtube import YouTubeMusicSearch, YouTubeMusicSong, YouTubeMusicVi
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
 YT_MUSIC_BASE_API = YT_MUSIC_DOMAIN + "/youtubei/v1/"
-# key appears to be the same for all unauthenticated users
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0"
 
 
+# key appears to be the same for all unauthenticated users
 YT_MUSIC_PARAMS = {"alt": "json", "key": "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"}
 YT_MUSIC_HEADERS = {
     "user-agent": USER_AGENT,

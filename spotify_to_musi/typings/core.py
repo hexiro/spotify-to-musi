@@ -72,12 +72,11 @@ class Playlist:
     id: str
     name: str = field(compare=False)
     track_count: int = field(init=False, compare=False)
-    cover_image_url: str = field(repr=False, compare=False)
+    cover_image_url: str | None = field(repr=False, compare=False)
     tracks: tuple[Track, ...] = field(repr=False, compare=False)
 
     def __post_init__(self):
         self.track_count = len(self.tracks)
-        validate_tuple_isnt_empty(self.tracks)
 
 
 if __name__ == "__main__":
