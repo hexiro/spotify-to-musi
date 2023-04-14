@@ -118,53 +118,59 @@ async def convert_track_to_youtube_track(
     cached_tracks_dict: dict[Track, YouTubeTrack] = await tracks_cache.load_cached_tracks_dict()
     cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
 
+    advance = lambda: progress.advance(task_id, advance=1)
+
     if track in cached_tracks:
-        youtube_track = cached_tracks_dict[track]
-    else:
-        youtube_music_search = await ytmusic.search_music(track.query, client=client)
+        advance()
+        return cached_tracks_dict[track]
 
-        if not youtube_music_search:
-            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
-            return None
+    youtube_music_search = await ytmusic.search_music(track.query, client=client)
 
-        options = youtube_music_search_options(track, youtube_music_search)
+    if not youtube_music_search:
+        advance()
+        rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
+        return None
 
-        if not options:
-            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
-            return None
+    options = youtube_music_search_options(track, youtube_music_search)
 
-        youtube_music_result = options[0]
-        top_score = youtube_result_score(youtube_music_result, track)
+    if not options:
+        advance()
+        rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
+        return None
 
-        # value might need to be tweaked later
-        if top_score < 1:
-            rich.print(
-                skipping_message(text=track.colorized_query, reason=f"Low Score: [white]{round(top_score, 3)}[/white]")
-            )
-            return None
+    youtube_music_result = options[0]
+    top_score = youtube_result_score(youtube_music_result, track)
 
-        album_name: str | None = None
-        is_explicit: bool | None = None
-
-        if isinstance(youtube_music_result, YouTubeMusicSong):
-            if youtube_music_result.album:
-                album_name = youtube_music_result.album.name
-
-            is_explicit = youtube_music_result.is_explicit
-
-        youtube_track = YouTubeTrack(
-            name=track.name,
-            duration=track.duration,
-            artists=track.artists,
-            youtube_name=youtube_music_result.title,
-            youtube_duration=youtube_music_result.duration,
-            youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
-            album_name=album_name,
-            is_explicit=is_explicit,
-            video_id=youtube_music_result.video_id,
+    # value might need to be tweaked later
+    if top_score < 1:
+        advance()
+        rich.print(
+            skipping_message(text=track.colorized_query, reason=f"Low Score: [white]{round(top_score, 3)}[/white]")
         )
+        return None
 
-    progress.update(task_id, advance=1)
+    album_name: str | None = None
+    is_explicit: bool | None = None
+
+    if isinstance(youtube_music_result, YouTubeMusicSong):
+        if youtube_music_result.album:
+            album_name = youtube_music_result.album.name
+
+        is_explicit = youtube_music_result.is_explicit
+
+    youtube_track = YouTubeTrack(
+        name=track.name,
+        duration=track.duration,
+        artists=track.artists,
+        youtube_name=youtube_music_result.title,
+        youtube_duration=youtube_music_result.duration,
+        youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
+        album_name=album_name,
+        is_explicit=is_explicit,
+        video_id=youtube_music_result.video_id,
+    )
+
+    advance()
     return youtube_track
 
 
