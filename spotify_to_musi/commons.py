@@ -11,6 +11,24 @@ def task_description(*, querying: str, color: str, subtype: str | None = None) -
     return desc
 
 
+def loaded_message(*, source: str, loaded: str, tracks_count: int, color: str, name: str | None = None):
+    msg = f"[bold {color}]{source.upper()}:[/bold {color}] Loaded {loaded} "
+
+    tracks_parens = ("(", ")")
+    if name is not None:
+        tracks_parens = ("[", "]")
+        msg += f"([grey53]{name}[/grey53]) "
+
+    left, right = tracks_parens
+    msg += f"{left}[{color}]{tracks_count}[/{color}] [grey53]tracks[/grey53]{right}"
+
+    return msg
+
+
+def skipping_message(text: str, reason: str) -> str:
+    return f"[bold yellow1]SKIPPING:[/bold yellow1] {text} ({reason})"
+
+
 def remove_parens(title: str) -> str:
     bracket_groups = (
         ("[", "]"),

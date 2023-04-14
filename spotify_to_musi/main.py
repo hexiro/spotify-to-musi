@@ -15,7 +15,6 @@ async def main() -> None:
         playlists, liked_tracks = await spotify.query_spotify(progress)
 
         # TODO: de-deduplicate tracks when requesting ytm
-        # TODO: finish implementing progress bars
 
         await tracks_cache.load_cached_youtube_tracks()
 

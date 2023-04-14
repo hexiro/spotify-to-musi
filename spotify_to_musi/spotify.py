@@ -12,7 +12,7 @@ from rich.progress import Progress, TaskID
 
 from typings.core import Playlist, Track, Artist
 from typings.spotify import SpotifyTrack, BasicSpotifyPlaylist, SpotifyPlaylist
-from commons import task_description
+from commons import task_description, loaded_message
 
 console = rich.get_console()
 
@@ -151,7 +151,15 @@ async def basic_playlist_to_playlist(
         tracks=spotify_tracks,
     )
 
-    rich.print(f"[bold green]SPOTIFY:[/bold green] Loaded Playlist ({playlist.name}) [{len(spotify_tracks)} tracks]")
+    rich.print(
+        loaded_message(
+            source="Spotify",
+            loaded="Playlist",
+            name=playlist.name,
+            tracks_count=len(spotify_tracks),
+            color="green",
+        )
+    )
 
     return playlist
 
@@ -246,15 +254,20 @@ async def fetch_spotify_liked_tracks(
 
     liked_tracks: list[SpotifyTrack] = spotify_track_items_to_spotify_tracks(liked_tracks_items)
 
-    rich.print(f"[bold green]SPOTIFY:[/bold green] Loaded Liked Songs ({len(liked_tracks)} tracks)")
+    rich.print(
+        loaded_message(
+            source="Spotify",
+            loaded="Liked Songs",
+            tracks_count=len(liked_tracks),
+            color="green",
+        )
+    )
 
     return liked_tracks
 
 
 def covert_spotify_playlist_to_playlist(spotify_playlist: SpotifyPlaylist) -> Playlist:
     tracks = covert_spotify_tracks_to_tracks(spotify_playlist.tracks)
-
-    rich.print(f"[bold green]SPOTIFY:[/bold green] {spotify_playlist.name} ({len(tracks)} tracks)")
 
     return Playlist(
         id=spotify_playlist.id,

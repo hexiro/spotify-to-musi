@@ -64,7 +64,7 @@ class Track(BaseModel):
         """
         Colorized query used w/ rich lib for printing
         """
-        return f"[bold white]{self.primary_artist.name}[/bold white] - [gray]{self.name}{self.featuring_text}[/gray]"
+        return f"[bold white]{self.primary_artist.name}[/bold white] - [grey53]{self.name}{self.featuring_text}[/grey53]"
 
 
 @dataclass

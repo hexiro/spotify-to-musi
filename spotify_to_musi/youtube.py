@@ -6,7 +6,14 @@ import rich
 from rich.progress import Progress, TaskID
 
 import tracks_cache
-from commons import remove_parens, remove_features_from_title, gather_with_concurrency, task_description
+from commons import (
+    remove_parens,
+    remove_features_from_title,
+    gather_with_concurrency,
+    task_description,
+    loaded_message,
+    skipping_message,
+)
 
 
 import ytmusic
@@ -23,12 +30,17 @@ from typings.youtube import (
 async def query_youtube(
     progress: Progress, playlists: tuple[Playlist, ...], liked_tracks: tuple[Track, ...]
 ) -> tuple[tuple[YouTubePlaylist, ...], tuple[YouTubeTrack, ...]]:
-    total = len(liked_tracks) + sum(len(p.tracks) for p in playlists)
+    # honestly not really sure why this -1 makes the bar go to 100%, otherwise it stops at 99%
+    total = len(liked_tracks) + sum(len(p.tracks) for p in playlists) - 1
 
     task_id = progress.add_task(task_description(querying="YouTube", color="red"), total=total)
 
-    youtube_playlists = await convert_playlists_to_youtube_playlists(playlists, progress, task_id)
     youtube_liked_tracks = await convert_tracks_to_youtube_tracks(liked_tracks, progress, task_id)
+    rich.print(
+        loaded_message(source="YouTube", loaded="Liked Songs", tracks_count=len(youtube_liked_tracks), color="red")
+    )
+
+    youtube_playlists = await convert_playlists_to_youtube_playlists(playlists, progress, task_id)
 
     return youtube_playlists, youtube_liked_tracks
 
@@ -158,15 +170,13 @@ async def convert_track_to_youtube_track(
         if cached_youtube_track.artists != track.artists:
             continue
 
-        rich.print("[bold red]YOUTUBE:[/bold red] " + track.colorized_query + " (cached)")
-
         youtube_track = cached_youtube_track
 
     else:
         youtube_music_search = await ytmusic.search_music(track.query, client=client)
 
         if not youtube_music_search:
-            rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} (no results)")
+            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
             return None
 
         options: list[YouTubeMusicResult] = []
@@ -183,7 +193,7 @@ async def convert_track_to_youtube_track(
         options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
 
         if not options:
-            rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} (no results)")
+            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
             return None
 
         youtube_music_result = options[0]
@@ -193,10 +203,6 @@ async def convert_track_to_youtube_track(
         if top_score < 1:
             rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} ({round(top_score, 3)})")
             return None
-        else:
-            rich.print(f"[bold bright_red]YOUTUBE:[/bold bright_red] {track.colorized_query} ({round(top_score, 3)})")
-        # rich.print(options)
-        # rich.print(youtube_result_score(options[0], track))
 
         album_name: str | None = None
         is_explicit: bool | None = None
@@ -258,12 +264,24 @@ async def convert_playlist_to_youtube_playlist(
         tracks=playlist.tracks, client=client, progress=progress, task_id=task_id
     )
 
-    return YouTubePlaylist(
+    youtube_playlist = YouTubePlaylist(
         name=playlist.name,
         tracks=youtube_tracks,
         id=playlist.id,
         cover_image_url=playlist.cover_image_url,
     )
+
+    rich.print(
+        loaded_message(
+            source="YouTube",
+            loaded="Playlist",
+            name=youtube_playlist.name,
+            tracks_count=len(youtube_tracks),
+            color="red",
+        )
+    )
+
+    return youtube_playlist
 
 
 async def convert_playlists_to_youtube_playlists(
