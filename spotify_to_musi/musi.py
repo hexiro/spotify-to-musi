@@ -76,20 +76,16 @@ def generate_musi_uuid(musi_videos: list[MusiVideo]) -> uuid.UUID:
     """
     Generate a deterministic UUID based on the video IDs of the provided MusiVideo-s.
     """
-    video_ids: set[str] = set()
+    musi_video_dicts = [musi_video.dict(exclude={"created_date": True}) for musi_video in musi_videos]
+    musi_video_dicts.sort(key=lambda item: item["video_creator"])
 
-    for musi_video in musi_videos:
-        if musi_video.video_id in video_ids:
-            continue
-        video_ids.add(musi_video.video_id)
+    musi_videos_json = json.dumps(musi_video_dicts, default=pydantic.json.pydantic_encoder)
+    musi_videos_json_bytes = musi_videos_json.encode("utf-8")
 
-    video_ids_json = json.dumps(sorted(video_ids), default=pydantic.json.pydantic_encoder)
-    video_ids_json_bytes = video_ids_json.encode("utf-8")
+    md5_hash = hashlib.md5(musi_videos_json_bytes)
+    md5_hash_hexdigest = md5_hash.hexdigest()
 
-    video_ids_hash = hashlib.md5(video_ids_json_bytes)
-    hexdigest = video_ids_hash.hexdigest()
-
-    return uuid.uuid3(uuid.NAMESPACE_OID, hexdigest)
+    return uuid.uuid3(uuid.NAMESPACE_OID, md5_hash_hexdigest)
 
 
 async def upload_to_musi(
