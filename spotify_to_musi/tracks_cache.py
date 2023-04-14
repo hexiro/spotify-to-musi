@@ -6,20 +6,25 @@ import aiofiles
 import pydantic
 import pydantic.errors
 import pydantic.json
-import rich
 
 from paths import YOUTUBE_DATA_CACHE_PATH
-from typings.youtube import YouTubeTrack
+from typings.youtube import YouTubePlaylist, YouTubeTrack
 
 from cache import AsyncLRU
 
 
-async def cache_youtube_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> None:
+async def cache_youtube_tracks(
+    youtube_playlists: tuple[YouTubePlaylist, ...], youtube_liked_tracks: tuple[YouTubeTrack, ...]
+) -> None:
     """
     Cache tracks to disk.
     """
-    youtube_tracks_to_cache: list[YouTubeTrack] = list(youtube_tracks)
-    youtube_track_video_ids: set[str] = {t.video_id for t in youtube_tracks}
+
+    youtube_tracks_to_cache: list[YouTubeTrack] = list(youtube_liked_tracks)
+    for youtube_playlist in youtube_playlists:
+        youtube_tracks_to_cache.extend(youtube_playlist.tracks)
+
+    youtube_track_video_ids: set[str] = {t.video_id for t in youtube_tracks_to_cache}
 
     current_youtube_tracks = await load_cached_youtube_tracks()
 

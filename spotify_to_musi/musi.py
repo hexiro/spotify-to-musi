@@ -23,6 +23,15 @@ from typings.musi import (
 )
 
 
+def convert_from_youtube(
+    youtube_playlists: t.Iterable[YouTubePlaylist], youtube_liked_tracks: t.Iterable[YouTubeTrack]
+) -> tuple[tuple[MusiPlaylist, ...], MusiLibrary]:
+    musi_playlists = convert_playlists_to_musi_playlists(youtube_playlists)
+    musi_library = covert_youtube_tracks_to_musi_library(youtube_liked_tracks)
+
+    return musi_playlists, musi_library
+
+
 def covert_youtube_tracks_to_musi_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> tuple[MusiTrack, ...]:
     musi_tracks: list[MusiTrack] = []
 
@@ -38,7 +47,7 @@ def covert_youtube_tracks_to_musi_library(youtube_tracks: t.Iterable[YouTubeTrac
     return MusiLibrary(tracks=musi_tracks)
 
 
-def convert_playlists_to_musi_playlists(youtube_playlists: t.Iterable[YouTubePlaylist]) -> tuple[MusiPlaylist]:
+def convert_playlists_to_musi_playlists(youtube_playlists: t.Iterable[YouTubePlaylist]) -> tuple[MusiPlaylist, ...]:
     musi_playlists: list[MusiPlaylist] = []
 
     for youtube_playlist in youtube_playlists:
