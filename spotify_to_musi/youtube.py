@@ -21,6 +21,7 @@ from typings.core import Playlist, Track, Artist
 from typings.youtube import (
     YouTubePlaylist,
     YouTubeTrack,
+    YouTubeMusicSearch,
     YouTubeMusicResult,
     YouTubeMusicArtist,
     YouTubeMusicSong,
@@ -28,21 +29,160 @@ from typings.youtube import (
 
 
 async def query_youtube(
-    progress: Progress, playlists: tuple[Playlist, ...], liked_tracks: tuple[Track, ...]
+    playlists: tuple[Playlist, ...],
+    liked_tracks: tuple[Track, ...],
+    progress: Progress,
 ) -> tuple[tuple[YouTubePlaylist, ...], tuple[YouTubeTrack, ...]]:
-    # honestly not really sure why this -1 makes the bar go to 100%, otherwise it stops at 99%
-    total = len(liked_tracks) + sum(len(p.tracks) for p in playlists) - 1
+    await tracks_cache.load_cached_youtube_tracks()
+    await tracks_cache.load_cached_tracks_dict()
+    await tracks_cache.load_cached_tracks()
 
+    deduplicated_tracks: set[Track] = set(liked_tracks)
+    for playlist in playlists:
+        deduplicated_tracks.update(set(playlist.tracks))
+
+    total = len(deduplicated_tracks)
     task_id = progress.add_task(task_description(querying="YouTube", color="red"), total=total)
 
-    youtube_liked_tracks = await convert_tracks_to_youtube_tracks(liked_tracks, progress, task_id)
-    rich.print(
-        loaded_message(source="YouTube", loaded="Liked Songs", tracks_count=len(youtube_liked_tracks), color="red")
-    )
+    youtube_tracks = await fetch_youtube_tracks(deduplicated_tracks, progress, task_id)
+    await tracks_cache.update_cached_tracks(youtube_tracks)
 
-    youtube_playlists = await convert_playlists_to_youtube_playlists(playlists, progress, task_id)
+    youtube_liked_tracks = await convert_tracks_to_youtube_tracks(liked_tracks)
+    rich.print(loaded_message(source="YouTube", loaded="Liked Songs", tracks_count=len(youtube_tracks), color="red"))
+
+    youtube_playlists = await convert_playlists_to_youtube_playlists(playlists)
+    for youtube_playlist in youtube_playlists:
+        rich.print(
+            loaded_message(
+                source="YouTube",
+                loaded="Playlist",
+                name=youtube_playlist.name,
+                color="red",
+            )
+        )
 
     return youtube_playlists, youtube_liked_tracks
+
+
+async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> tuple[YouTubeTrack, ...]:
+    return await tracks_cache.match_tracks_to_youtube_tracks(tracks)
+
+
+async def convert_playlist_to_youtube_playlist(playlist: Playlist) -> YouTubePlaylist:
+    youtube_tracks = await tracks_cache.match_tracks_to_youtube_tracks(playlist.tracks)
+    youtube_playlist = YouTubePlaylist(
+        name=playlist.name,
+        tracks=youtube_tracks,
+        id=playlist.id,
+        cover_image_url=playlist.cover_image_url,
+    )
+    return youtube_playlist
+
+
+async def convert_playlists_to_youtube_playlists(playlists: t.Iterable[Playlist]) -> tuple[YouTubePlaylist, ...]:
+    tasks: list[asyncio.Task[YouTubePlaylist]] = []
+
+    for playlist in playlists:
+        coro = convert_playlist_to_youtube_playlist(playlist)
+        task = asyncio.create_task(coro)
+        tasks.append(task)
+
+    youtube_playlists: list[YouTubePlaylist] = await asyncio.gather(*tasks)
+    return tuple(youtube_playlists)
+
+
+def youtube_music_search_options(
+    track: Track, youtube_music_search: YouTubeMusicSearch | None
+) -> list[YouTubeMusicResult]:
+    options: list[YouTubeMusicResult] = []
+
+    if not youtube_music_search:
+        return options
+
+    if youtube_music_search.top_result:
+        options.append(youtube_music_search.top_result)
+
+    for youtube_music_song in youtube_music_search.songs:
+        options.append(youtube_music_song)
+
+    for youtube_music_video in youtube_music_search.videos:
+        options.append(youtube_music_video)
+
+    options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
+    return options
+
+
+async def convert_track_to_youtube_track(
+    track: Track, client: httpx.AsyncClient, progress: Progress, task_id: TaskID
+) -> YouTubeTrack | None:
+    cached_tracks_dict: dict[Track, YouTubeTrack] = await tracks_cache.load_cached_tracks_dict()
+    cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
+
+    if track in cached_tracks:
+        youtube_track = cached_tracks_dict[track]
+    else:
+        youtube_music_search = await ytmusic.search_music(track.query, client=client)
+
+        if not youtube_music_search:
+            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
+            return None
+
+        options = youtube_music_search_options(track, youtube_music_search)
+
+        if not options:
+            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
+            return None
+
+        youtube_music_result = options[0]
+        top_score = youtube_result_score(youtube_music_result, track)
+
+        # value might need to be tweaked later
+        if top_score < 1:
+            rich.print(
+                skipping_message(text=track.colorized_query, reason=f"Low Score: [white]{round(top_score, 3)}[/white]")
+            )
+            return None
+
+        album_name: str | None = None
+        is_explicit: bool | None = None
+
+        if isinstance(youtube_music_result, YouTubeMusicSong):
+            if youtube_music_result.album:
+                album_name = youtube_music_result.album.name
+
+            is_explicit = youtube_music_result.is_explicit
+
+        youtube_track = YouTubeTrack(
+            name=track.name,
+            duration=track.duration,
+            artists=track.artists,
+            youtube_name=youtube_music_result.title,
+            youtube_duration=youtube_music_result.duration,
+            youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
+            album_name=album_name,
+            is_explicit=is_explicit,
+            video_id=youtube_music_result.video_id,
+        )
+
+    progress.update(task_id, advance=1)
+    return youtube_track
+
+
+async def fetch_youtube_tracks(
+    tracks: t.Iterable[Track], progress: Progress, task_id: TaskID
+) -> tuple[YouTubeTrack, ...]:
+    async with httpx.AsyncClient(timeout=60) as client:
+        youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []
+
+        for track in tracks:
+            coro = convert_track_to_youtube_track(track=track, client=client, progress=progress, task_id=task_id)
+            task = asyncio.create_task(coro)
+            youtube_tracks_tasks.append(task)
+
+        youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
+        youtube_tracks: tuple[YouTubeTrack, ...] = tuple(x for x in youtube_tracks if x is not None)
+
+    return youtube_tracks
 
 
 def remove_artist_from_title(title: str):
@@ -136,144 +276,3 @@ def album_score(real_album_name: str | None, result_album_name: str | None) -> f
     if result_album_name in real_album_name:
         return 0.75
     return 0
-
-
-# def convert_youtube_tracks_to_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> list[Track]:
-#     return [convert_youtube_track_to_track(yt) for yt in youtube_tracks]
-
-
-async def convert_track_to_youtube_track(
-    track: Track, client: httpx.AsyncClient, progress: Progress, task_id: TaskID
-) -> YouTubeTrack | None:
-    cached_tracks_dict: dict[Track, YouTubeTrack] = await tracks_cache.load_cached_tracks_dict()
-    cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
-
-    if track in cached_tracks:
-        rich.print("[bold red]YOUTUBE CACHE:[/bold red] " + track.colorized_query)
-        youtube_track = cached_tracks_dict[track]
-    else:
-        youtube_music_search = await ytmusic.search_music(track.query, client=client)
-
-        if not youtube_music_search:
-            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
-            return None
-
-        options: list[YouTubeMusicResult] = []
-
-        if youtube_music_search.top_result:
-            options.append(youtube_music_search.top_result)
-
-        for youtube_music_song in youtube_music_search.songs:
-            options.append(youtube_music_song)
-
-        for youtube_music_video in youtube_music_search.videos:
-            options.append(youtube_music_video)
-
-        options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
-
-        if not options:
-            rich.print(skipping_message(text=track.colorized_query, reason="No Results"))
-            return None
-
-        youtube_music_result = options[0]
-        top_score = youtube_result_score(youtube_music_result, track)
-
-        # value might need to be tweaked later
-        if top_score < 1:
-            rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} ({round(top_score, 3)})")
-            return None
-        else:
-            rich.print("[bold red]YOUTUBE:[/bold red] " + track.colorized_query)
-        album_name: str | None = None
-        is_explicit: bool | None = None
-
-        if isinstance(youtube_music_result, YouTubeMusicSong):
-            if youtube_music_result.album:
-                album_name = youtube_music_result.album.name
-
-            is_explicit = youtube_music_result.is_explicit
-
-        youtube_track = YouTubeTrack(
-            name=track.name,
-            duration=track.duration,
-            artists=track.artists,
-            youtube_name=youtube_music_result.title,
-            youtube_duration=youtube_music_result.duration,
-            youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
-            album_name=album_name,
-            is_explicit=is_explicit,
-            video_id=youtube_music_result.video_id,
-        )
-
-    progress.update(task_id, advance=1)
-    # in future cache track here
-    return youtube_track
-
-
-async def convert_tracks_to_youtube_tracks(
-    tracks: t.Iterable[Track], progress: Progress, task_id: TaskID, client: httpx.AsyncClient | None = None
-) -> tuple[YouTubeTrack, ...]:
-    close_client: bool = False
-    if not client:
-        client = httpx.AsyncClient(timeout=60)
-        close_client = True
-
-    youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []
-
-    for track in tracks:
-        coro = convert_track_to_youtube_track(track=track, client=client, progress=progress, task_id=task_id)
-        task = asyncio.create_task(coro)
-        youtube_tracks_tasks.append(task)
-
-    youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
-    youtube_tracks: tuple[YouTubeTrack, ...] = tuple(x for x in youtube_tracks if x is not None)
-
-    if close_client:
-        await client.aclose()
-
-    return youtube_tracks
-
-
-async def convert_playlist_to_youtube_playlist(
-    playlist: Playlist,
-    progress: Progress,
-    task_id: TaskID,
-    client: httpx.AsyncClient | None = None,
-) -> YouTubePlaylist:
-    youtube_tracks = await convert_tracks_to_youtube_tracks(
-        tracks=playlist.tracks, client=client, progress=progress, task_id=task_id
-    )
-
-    youtube_playlist = YouTubePlaylist(
-        name=playlist.name,
-        tracks=youtube_tracks,
-        id=playlist.id,
-        cover_image_url=playlist.cover_image_url,
-    )
-
-    rich.print(
-        loaded_message(
-            source="YouTube",
-            loaded="Playlist",
-            name=youtube_playlist.name,
-            tracks_count=len(youtube_tracks),
-            color="red",
-        )
-    )
-
-    return youtube_playlist
-
-
-async def convert_playlists_to_youtube_playlists(
-    playlists: t.Iterable[Playlist], progress: Progress, task_id: TaskID
-) -> tuple[YouTubePlaylist, ...]:
-    youtube_playlists_tasks: list[asyncio.Task[YouTubePlaylist]] = []
-
-    for playlist in playlists:
-        coro = convert_playlist_to_youtube_playlist(playlist, progress, task_id)
-        task = asyncio.create_task(coro)
-        youtube_playlists_tasks.append(task)
-
-    youtube_playlists = await gather_with_concurrency(2, *youtube_playlists_tasks)
-
-    return youtube_playlists  # type: ignore

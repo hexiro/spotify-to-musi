@@ -6,7 +6,7 @@ import rich
 from spotify_to_musi import ytmusic
 from spotify_to_musi.typings.core import Artist, Track
 from spotify_to_musi.typings.youtube import YouTubeMusicResult
-from spotify_to_musi.youtube import youtube_result_score
+from spotify_to_musi.youtube import youtube_result_score, youtube_music_search_options
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -89,17 +89,7 @@ async def test_transfer(track: Track, expected_video_id: str) -> None:
 
     assert youtube_music_search is not None
 
-    if youtube_music_search.top_result:
-        options.append(youtube_music_search.top_result)
-
-    for youtube_music_song in youtube_music_search.songs:
-        options.append(youtube_music_song)
-
-    for youtube_music_video in youtube_music_search.videos:
-        options.append(youtube_music_video)
-
-    options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
-
+    options = youtube_music_search_options(track, youtube_music_search)
     best_option = options[0]
 
     rich.print(track.query)
