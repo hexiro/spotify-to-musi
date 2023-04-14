@@ -23,8 +23,9 @@ class Track:
     name: str
     duration: int
     artists: tuple[Artist, ...]
-    album_name: str | None
-    is_explicit: bool
+    # there can be a song on multiple albums, ie. original, deluxe, etc.
+    album_name: str | None = field(compare=False)
+    is_explicit: bool = field(compare=False)
 
     def __post_init__(self):
         validate_tuple_isnt_empty(self.artists)
