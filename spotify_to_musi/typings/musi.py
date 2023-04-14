@@ -1,16 +1,20 @@
 from __future__ import annotations
+
 import time
-
-
-from pydantic import BaseModel, Field
 import typing as t
+from dataclasses import field
 
-from typings.core import Track
+from pydantic.dataclasses import dataclass
+from pydantic import BaseModel, Field
+
+# TODO: figure out why it breaks w/o this import
+from typings.core import Artist
 from typings.youtube import YouTubeTrack
 
 
+@dataclass(frozen=True)
 class MusiTrack(YouTubeTrack):
-    created_date: float = Field(default_factory=lambda: time.time())
+    created_date: float = field(default_factory=time.time)
 
     def musi_item(self, index: int) -> MusiItem:
         return MusiItem(
@@ -62,19 +66,16 @@ class MusiPlaylist(BaseModel):
     def dict(self, **kwargs) -> MusiPlaylistDict:
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
         super_dict = super().dict(**kwargs)
-
-        musi_playlist_dict: MusiPlaylistDict = {
+        data = {
             "ot": super_dict["ot"],
             "items": items,
             "name": super_dict["name"],
             "type": super_dict["type"],
             "date": super_dict["date"],
-            "ciu": super_dict["ciu"],
         }
-        if not self.ciu:
-            musi_playlist_dict.pop("ciu")
-
-        return musi_playlist_dict
+        if self.ciu:
+            data["ciu"] = super_dict["ciu"]
+        return data  # type: ignore
 
 
 class MusiLibraryDict(t.TypedDict):

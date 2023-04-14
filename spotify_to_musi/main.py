@@ -17,6 +17,8 @@ async def main() -> None:
         # TODO: de-deduplicate tracks when requesting ytm
 
         await tracks_cache.load_cached_youtube_tracks()
+        await tracks_cache.load_cached_tracks_dict()
+        await tracks_cache.load_cached_tracks()
 
         youtube_playlists, youtube_liked_tracks = await youtube.query_youtube(progress, playlists, liked_tracks)
 

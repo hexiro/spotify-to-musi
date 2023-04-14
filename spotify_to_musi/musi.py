@@ -1,4 +1,3 @@
-import asyncio
 import hashlib
 import json
 import typing as t
@@ -36,7 +35,18 @@ def covert_youtube_tracks_to_musi_tracks(youtube_tracks: t.Iterable[YouTubeTrack
     musi_tracks: list[MusiTrack] = []
 
     for youtube_track in youtube_tracks:
-        musi_track = MusiTrack(**youtube_track.dict())
+        # a little verbose
+        musi_track = MusiTrack(
+            name=youtube_track.name,
+            duration=youtube_track.duration,
+            artists=youtube_track.artists,
+            album_name=youtube_track.album_name,
+            is_explicit=youtube_track.is_explicit,
+            youtube_name=youtube_track.youtube_name,
+            youtube_duration=youtube_track.youtube_duration,
+            youtube_artists=youtube_track.youtube_artists,
+            video_id=youtube_track.video_id,
+        )
         musi_tracks.append(musi_track)
 
     return tuple(musi_tracks)
@@ -89,7 +99,11 @@ async def upload_to_musi(
     musi_videos: list[MusiVideo] = []
 
     for musi_track in musi_library.tracks:
-        musi_videos.append(musi_track.musi_video())
+        try:
+            musi_videos.append(musi_track.musi_video())
+        except pydantic.error_wrappers.ValidationError as exc:
+            rich.print(f"[red]validation error:[/red] {musi_track!r}")
+            raise exc
     for musi_playlist in musi_playlists:
         for musi_track in musi_playlist.tracks:
             musi_videos.append(musi_track.musi_video())

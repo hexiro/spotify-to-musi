@@ -281,7 +281,7 @@ def covert_spotify_track_to_track(spotify_track: SpotifyTrack) -> Track:
     track = Track(
         name=spotify_track.name,
         duration=spotify_track.duration,
-        artists=parse_obj_as(tuple[Artist, ...], spotify_track.artists),
+        artists=tuple(Artist(name=a.name) for a in spotify_track.artists),
         album_name=spotify_track.album_name,
         is_explicit=spotify_track.explicit,
     )

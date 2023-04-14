@@ -1,9 +1,7 @@
-import asyncio
 import contextlib
 import time
 import httpx
 import typing as t
-import rich
 
 
 from typings.youtube import YouTubeMusicSearch, YouTubeMusicSong, YouTubeMusicVideo, YouTubeMusicResult
@@ -17,9 +15,9 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 
 # key appears to be the same for all unauthenticated users
 YT_MUSIC_PARAMS = {"alt": "json", "key": "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"}
 YT_MUSIC_HEADERS = {
-    "user-agent": USER_AGENT,
     "origin": YT_MUSIC_DOMAIN,
     "referer": YT_MUSIC_DOMAIN,
+    "user-agent": USER_AGENT,
 }
 
 YT_MUSIC_CONTEXT = {

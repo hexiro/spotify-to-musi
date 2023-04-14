@@ -47,6 +47,7 @@ class YouTubeMusicSearch(BaseModel):
     videos: list[YouTubeMusicVideo]
 
 
+@dataclass(frozen=True)
 class YouTubeTrack(Track):
     youtube_name: str
     youtube_duration: int
@@ -55,15 +56,30 @@ class YouTubeTrack(Track):
     video_id: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class YouTubePlaylist(Playlist):
     tracks: tuple[YouTubeTrack, ...] = field(repr=False, compare=False)
 
 
 if __name__ == "__main__":
+    from rich import print
+
+    youtube_track = YouTubeTrack(
+        name="test",
+        duration=1,
+        artists=(Artist(name="test"),),
+        youtube_name="test",
+        youtube_duration=1,
+        youtube_artists=(Artist(name="test"),),
+        album_name="test",
+        is_explicit=True,
+        video_id="test",
+    )
     youtube_playlist = YouTubePlaylist(
         name="test",
         id="test",
-        tracks=tuple(),
+        tracks=(youtube_track,),
         cover_image_url="test",
     )
+
+    print(set((youtube_track,)))

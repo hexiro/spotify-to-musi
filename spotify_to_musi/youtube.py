@@ -7,8 +7,8 @@ from rich.progress import Progress, TaskID
 
 import tracks_cache
 from commons import (
-    remove_parens,
     remove_features_from_title,
+    remove_parens,
     gather_with_concurrency,
     task_description,
     loaded_message,
@@ -138,40 +138,19 @@ def album_score(real_album_name: str | None, result_album_name: str | None) -> f
     return 0
 
 
-def convert_youtube_track_to_track(youtube_track: YouTubeTrack) -> Track:
-    return Track(
-        name=youtube_track.name,
-        duration=youtube_track.duration,
-        artists=tuple(Artist(name=a.name) for a in youtube_track.artists),
-        album_name=youtube_track.album_name,
-        is_explicit=bool(youtube_track.is_explicit),
-    )
-
-
-def convert_youtube_tracks_to_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> list[Track]:
-    return [convert_youtube_track_to_track(yt) for yt in youtube_tracks]
+# def convert_youtube_tracks_to_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> list[Track]:
+#     return [convert_youtube_track_to_track(yt) for yt in youtube_tracks]
 
 
 async def convert_track_to_youtube_track(
     track: Track, client: httpx.AsyncClient, progress: Progress, task_id: TaskID
 ) -> YouTubeTrack | None:
-    cached_youtube_tracks = await tracks_cache.load_cached_youtube_tracks()
+    cached_tracks_dict: dict[Track, YouTubeTrack] = await tracks_cache.load_cached_tracks_dict()
+    cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
 
-    youtube_track: YouTubeTrack
-
-    # i tried using a set of frozen pydantic models,
-    # but pylance didn't detect it as being hashable and
-    # i (assume) this will still be much faster than duplicating youtube music searches so im okay with this
-    for cached_youtube_track in cached_youtube_tracks:
-        if cached_youtube_track.name != track.name:
-            continue
-        if cached_youtube_track.duration != track.duration:
-            continue
-        if cached_youtube_track.artists != track.artists:
-            continue
-
-        youtube_track = cached_youtube_track
-
+    if track in cached_tracks:
+        rich.print("[bold red]YOUTUBE CACHE:[/bold red] " + track.colorized_query)
+        youtube_track = cached_tracks_dict[track]
     else:
         youtube_music_search = await ytmusic.search_music(track.query, client=client)
 
@@ -203,7 +182,8 @@ async def convert_track_to_youtube_track(
         if top_score < 1:
             rich.print(f"[bold yellow1]SKIPPING:[/bold yellow1] {track.colorized_query} ({round(top_score, 3)})")
             return None
-
+        else:
+            rich.print("[bold red]YOUTUBE:[/bold red] " + track.colorized_query)
         album_name: str | None = None
         is_explicit: bool | None = None
 
