@@ -9,7 +9,7 @@ import youtube
 from rich.progress import Progress
 
 
-async def main() -> None:
+async def transfer_spotify_to_musi() -> None:
     with Progress() as progress:
         playlists, liked_tracks = await spotify.query_spotify(progress)
         youtube_playlists, youtube_liked_tracks = await youtube.query_youtube(playlists, liked_tracks, progress)
@@ -21,4 +21,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(transfer_spotify_to_musi())

@@ -95,11 +95,7 @@ async def upload_to_musi(
     musi_videos: list[MusiVideo] = []
 
     for musi_track in musi_library.tracks:
-        try:
-            musi_videos.append(musi_track.musi_video())
-        except pydantic.error_wrappers.ValidationError as exc:
-            rich.print(f"[red]validation error:[/red] {musi_track!r}")
-            raise exc
+        musi_videos.append(musi_track.musi_video())
     for musi_playlist in musi_playlists:
         for musi_track in musi_playlist.tracks:
             musi_videos.append(musi_track.musi_video())

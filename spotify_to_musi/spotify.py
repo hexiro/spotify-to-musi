@@ -7,9 +7,9 @@ import rich
 import typing as t
 
 import pydantic.error_wrappers
-from pydantic import parse_obj_as
 from rich.progress import Progress, TaskID
 
+from paths import SPOTIFY_CREDENTIALS_PATH
 from typings.core import Playlist, Track, Artist
 from typings.spotify import SpotifyTrack, BasicSpotifyPlaylist, SpotifyPlaylist
 from commons import task_description, loaded_message
@@ -39,7 +39,10 @@ async def init() -> None:
     if spotify.user_creds:
         return
 
-    async with aiofiles.open("SPOTIFY_CREDS.json", "r") as file:
+    if not SPOTIFY_CREDENTIALS_PATH.is_file():
+        return
+
+    async with aiofiles.open(SPOTIFY_CREDENTIALS_PATH, "r") as file:
         spotify_creds_text = await file.read()
 
     spotify_creds_json = json.loads(spotify_creds_text)
