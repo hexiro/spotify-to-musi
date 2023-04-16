@@ -148,7 +148,11 @@ def attach_endpoints(app: sanic.Sanic) -> None:
 
         # https://beta.ruff.rs/docs/rules/asyncio-dangling-task/#why-is-this-bad
         # god knows why python functions like this (he doesn't)
-        _stop_server_task = asyncio.create_task(stop_server())
+        tasks: set[asyncio.Task] = set()
+        stop_server_task = asyncio.create_task(stop_server())
+        tasks.add(stop_server_task)
+        stop_server_task.add_done_callback(tasks.discard)
+
 
         return response.json(body={"success": True})
 
