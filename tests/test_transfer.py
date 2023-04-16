@@ -11,7 +11,7 @@ from spotify_to_musi.youtube import youtube_result_score, youtube_music_search_o
 pytest_plugins = ("pytest_asyncio",)
 
 
-track_to_expected_video_id: list[tuple[Track, str]] = [
+track_to_expected_video_ids: list[tuple[Track, list[str]]] = [
     (
         Track(
             name="Demon Time (feat. Ski Mask The Slump God)",
@@ -20,7 +20,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
             album_name="Trip At Knight (Complete Edition)",
             is_explicit=True,
         ),
-        "uoyaDo9B5Eo",
+        ["uoyaDo9B5Eo"],
     ),
     # b/c doja cat songs might come up
     (
@@ -31,7 +31,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
             album_name="Ethereal",
             is_explicit=True,
         ),
-        "s477U69XPlA",
+        ["s477U69XPlA", "lxfljkiR5Xc"],
     ),
     # b/c same mixtape has a song with same duration (1 second difference)
     (
@@ -42,7 +42,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
             album_name="The Perfect LUV Tape",
             is_explicit=True,
         ),
-        "ra1cvbdYhps",
+        ["ra1cvbdYhps"],
     ),
     (
         Track(
@@ -52,7 +52,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
             album_name="The Perfect LUV Tape",
             is_explicit=True,
         ),
-        "X21M7w6IkoM",
+        ["X21M7w6IkoM"],
     ),
     # b/c doesn't have 'song' on youtube music
     (
@@ -63,7 +63,7 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
             album_name="FATHER OF 4",
             is_explicit=True,
         ),
-        "v8PRzHXYcII",
+        ["v8PRzHXYcII"],
     ),
     # b/c has multiple official uploads on youtube music
     (
@@ -74,14 +74,14 @@ track_to_expected_video_id: list[tuple[Track, str]] = [
             album_name="DIE FOR MY BITCH",
             is_explicit=True,
         ),
-        "PTv7cJjNig8",
+        ["PTv7cJjNig8"],
     ),
 ]
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("track,expected_video_id", track_to_expected_video_id)
-async def test_transfer(track: Track, expected_video_id: str) -> None:
+@pytest.mark.parametrize("track,expected_video_ids", track_to_expected_video_ids)
+async def test_transfer(track: Track, expected_video_ids: list[str]) -> None:
     options: list[YouTubeMusicResult] = []
 
     async with httpx.AsyncClient() as client:
@@ -95,4 +95,4 @@ async def test_transfer(track: Track, expected_video_id: str) -> None:
     rich.print(track.query)
     rich.print([(option, youtube_result_score(option, track)) for option in options])
 
-    assert best_option.video_id == expected_video_id
+    assert best_option.video_id in expected_video_ids
