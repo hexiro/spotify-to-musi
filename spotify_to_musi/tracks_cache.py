@@ -5,7 +5,6 @@ import aiofiles
 import pydantic
 import pydantic.errors
 import pydantic.json
-import rich
 from cache import AsyncLRU
 from paths import YOUTUBE_DATA_CACHE_PATH
 from typings.core import Artist, Track

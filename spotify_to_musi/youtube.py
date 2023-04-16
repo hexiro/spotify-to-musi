@@ -120,7 +120,8 @@ async def convert_track_to_youtube_track(
     ] = await tracks_cache.load_cached_tracks_dict()
     cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
 
-    advance = lambda: progress.advance(task_id, advance=1)
+    def advance():
+        return progress.advance(task_id, advance=1)
 
     if track in cached_tracks:
         advance()

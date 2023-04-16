@@ -85,11 +85,11 @@ async def setup() -> None:
     """
     Configure Spotify w/ OAuth.
     """
-    spotify_to_musi_text = f"[bold][green]Spotify[/green][reset]-to-[/reset][dark_orange3]Musi[/dark_orange3][/bold]"
+    spotify_to_musi_text = "[bold][green]Spotify[/green][reset]-to-[/reset][dark_orange3]Musi[/dark_orange3][/bold]"
     welcome_text = f"{spotify_to_musi_text} first time setup! [i grey53](Ctrl + C to exit)[/i grey53]"
 
     if SPOTIFY_CREDENTIALS_PATH.is_file():
-        welcome_text += f"\n[grey53]* Your secrets are already set! Only run this script if you need to authorize with Spotify again.[/grey53]"
+        welcome_text += "\n[grey53]* Your secrets are already set! Only run this script if you need to authorize with Spotify again.[/grey53]"
 
     welcome_text += "\n"
     rich.print(welcome_text)
