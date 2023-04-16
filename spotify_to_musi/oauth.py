@@ -141,20 +141,10 @@ def attach_endpoints(app: sanic.Sanic) -> None:
 
         await spotify.populate_user_creds()
 
-        # maybe better way of stopping server?
-        async def stop_server() -> None:
-            await asyncio.sleep(3)
+        try:
+            return response.json(body={"success": True})
+        finally:
             app.stop()
-
-        # https://beta.ruff.rs/docs/rules/asyncio-dangling-task/#why-is-this-bad
-        # god knows why python functions like this (he doesn't)
-        tasks: set[asyncio.Task] = set()
-        stop_server_task = asyncio.create_task(stop_server())
-        tasks.add(stop_server_task)
-        stop_server_task.add_done_callback(tasks.discard)
-
-
-        return response.json(body={"success": True})
 
 
 def create_app(app_name: str) -> sanic.Sanic:
