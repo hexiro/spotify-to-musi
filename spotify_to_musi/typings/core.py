@@ -7,7 +7,7 @@ from pydantic.dataclasses import dataclass
 
 
 def validate_tuple_isnt_empty(value: tuple) -> tuple:
-    if len(value) == 0:
+    if not value:
         raise ValueError("Tuple can't be empty")
     return value
 
@@ -39,6 +39,7 @@ class Track:
 
     @property
     def featuring_text(self: Track) -> str:
+        # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
         if not self.secondary_artists:
             return ""
         return f" (feat. {' & '.join(a.name for a in self.secondary_artists)})"

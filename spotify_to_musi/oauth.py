@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import functools
 import json
@@ -16,8 +18,8 @@ from sanic.worker.loader import AppLoader
 
 ADDRESS = "localhost"
 PORT = 5000
-ADDRESS_WITH_PORT = ADDRESS + ":" + str(PORT)
-URL = "http://" + ADDRESS_WITH_PORT + "/authorize"
+ADDRESS_WITH_PORT = f"{ADDRESS}:{PORT}"
+URL = f"http://{ADDRESS_WITH_PORT}/authorize"
 STATE = str(uuid.uuid4())
 
 

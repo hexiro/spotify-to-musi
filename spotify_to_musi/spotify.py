@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import math
@@ -194,7 +196,7 @@ async def load_basic_playlists(
     *,
     task_id: TaskID,
     progress: Progress,
-) -> list[SpotifyPlaylist]:
+) -> list[SpotifyPlaylist]:  # sourcery skip: sum-comprehension
     playlist_tasks: list[asyncio.Task[SpotifyPlaylist]] = []
 
     total = 0

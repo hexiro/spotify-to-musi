@@ -56,7 +56,7 @@ class SpotifyArtist(BaseModel):
     uri: str
 
     @validator("name")
-    def validate_name(cls, v: str) -> str:  # noqa: ANN101
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
         if not v:
             raise ValueError("Artist name can't be empty")
         return v
@@ -79,7 +79,7 @@ class SpotifyAlbum(BaseModel):
     uri: str
 
     @validator("name")
-    def validate_name(cls, v: str) -> str:  # noqa: ANN101
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
         if not v:
             raise ValueError("Album name can't be empty")
         return v
@@ -107,7 +107,7 @@ class SpotifyTrack(BaseModel):
     # preview_url: Optional[str]
 
     @validator("name")
-    def validate_name(cls, v: str) -> str:  # noqa: ANN101
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
         if not v:
             raise ValueError("Track name can't be empty")
         return v

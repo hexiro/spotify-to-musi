@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 # https://regex101.com/r/r4mp7V/1

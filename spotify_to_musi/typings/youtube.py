@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import field
 
 from pydantic import BaseModel, validator
@@ -28,7 +30,7 @@ class YouTubeMusicSong(_YouTubeMusicResultType):
 
     @validator("album")
     def must_not_be_single(
-        cls, v: YouTubeMusicAlbum, values: dict[str, t.Any]  # noqa: ANN101
+        cls, v: YouTubeMusicAlbum, values: dict[str, t.Any]  # noqa: ANN101, N805
     ) -> YouTubeMusicAlbum | None:
         # sourcery skip: assign-if-exp, reintroduce-else
         if v.name == values["title"]:

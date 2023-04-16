@@ -63,4 +63,4 @@ ignore = [
     "E501",  # let black handle line length
     "ANN401"  # if everything is going to be typed, some things have to be any
 ]  
-select = ["ANN"]
+select = ["ANN", "TCH", "N"]

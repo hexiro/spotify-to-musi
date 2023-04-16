@@ -1,12 +1,21 @@
+from __future__ import annotations
+
 import contextlib
 import time
 import typing as t
 
-import httpx
-from typings.youtube import (YouTubeMusicResult, YouTubeMusicSearch,
-                             YouTubeMusicSong, YouTubeMusicVideo)
+from typings.youtube import (
+    YouTubeMusicResult,
+    YouTubeMusicSearch,
+    YouTubeMusicSong,
+    YouTubeMusicVideo,
+)
+
+if t.TYPE_CHECKING:
+    import httpx
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
+# sourcery skip: use-fstring-for-concatenation
 YT_MUSIC_BASE_API = YT_MUSIC_DOMAIN + "/youtubei/v1/"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0"
@@ -49,6 +58,7 @@ NORMAL_RESULT_KEY: t.Final = "musicShelfRenderer"
 
 
 def duration_in_seconds(duration_str: str) -> int:
+    # sourcery skip: sum-comprehension
     """
     Converts a duration string to seconds.
     Example: '2:30' -> 150
@@ -70,6 +80,7 @@ def duration_in_seconds(duration_str: str) -> int:
 
 
 def views_as_integer(views: str) -> int:
+    # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
     """
     Converts a view count string to an integer.
     Example: '1.2M' -> 1_200_000
@@ -94,7 +105,7 @@ def views_as_integer(views: str) -> int:
 
 async def search_music(
     query: str, client: httpx.AsyncClient
-) -> YouTubeMusicSearch | None:
+) -> YouTubeMusicSearch | None:  # sourcery skip: use-fstring-for-concatenation
     """
     Search YouTube music for a query.
     """
@@ -150,7 +161,7 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict) -> dict | 
 
     class Run(t.TypedDict):
         text: str
-        navigationEndpoint: t.NotRequired[t.Any]
+        navigationEndpoint: t.NotRequired[t.Any]  # noqa: N815
 
     class Artist(t.TypedDict):
         name: str
@@ -203,12 +214,7 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict) -> dict | 
     else:
         data["album"] = {"name": views_or_album}
 
-    artists: list[Artist] = []
-
-    for run in new_runs:
-        text = run["text"]
-        artists.append({"name": text})
-
+    artists: list[Artist] = [{"name": run["text"]} for run in new_runs]
     data["artists"] = tuple(artists)
 
     return data
@@ -240,6 +246,7 @@ def parse_video_id(song_or_video_data: dict) -> str:
 
 
 def parse_top_result(top_result_data: dict) -> YouTubeMusicResult | None:
+    # sourcery skip: remove-unnecessary-else, swap-if-else-branches
     navigation_endpoint = top_result_data["title"]["runs"][0]["navigationEndpoint"]
 
     # artist
@@ -376,6 +383,7 @@ def is_top_result(tab: dict) -> bool:
 
 
 def parse_yt_music_response(data: dict) -> YouTubeMusicSearch | None:
+    # sourcery skip: remove-redundant-if
     if "contents" not in data:
         return None
 

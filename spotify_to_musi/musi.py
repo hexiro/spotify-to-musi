@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import json
 import typing as t
@@ -7,10 +9,20 @@ import httpx
 import pydantic.error_wrappers
 import pydantic.json
 import rich
-from typings.musi import (MusiLibrary, MusiLibraryDict, MusiPlaylist,
-                          MusiPlaylistDict, MusiResponse, MusiTrack, MusiVideo,
-                          MusiVideoDict)
-from typings.youtube import YouTubePlaylist, YouTubeTrack
+from typings.musi import (
+    MusiLibrary,
+    MusiLibraryDict,
+    MusiPlaylist,
+    MusiPlaylistDict,
+    MusiResponse,
+    MusiTrack,
+    MusiVideo,
+    MusiVideoDict,
+)
+
+if t.TYPE_CHECKING:
+    from typings.youtube import YouTubePlaylist, YouTubeTrack
+
 
 
 def convert_from_youtube(
@@ -94,6 +106,7 @@ async def upload_to_musi(
     musi_playlists: t.Iterable[MusiPlaylist],
     musi_library: MusiLibrary,
 ) -> MusiResponse:
+    # sourcery skip: for-append-to-extend, list-comprehension
     musi_videos: list[MusiVideo] = []
 
     for musi_track in musi_library.tracks:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import typing as t
 
@@ -95,7 +97,7 @@ async def update_cached_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> None
 
 async def match_tracks_to_youtube_tracks(
     tracks: t.Iterable[Track],
-) -> tuple[YouTubeTrack, ...]:
+) -> tuple[YouTubeTrack, ...]:  # sourcery skip: for-append-to-extend, list-comprehension
     """
     Match the tracks to the cached YouTube tracks.
     """

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import typing as t
 
@@ -12,7 +14,7 @@ from commons import (
     skipping_message,
     task_description,
 )
-from rich.progress import Progress, TaskID
+
 from typings.core import Artist, Playlist, Track
 from typings.youtube import (
     YouTubeMusicArtist,
@@ -22,6 +24,9 @@ from typings.youtube import (
     YouTubePlaylist,
     YouTubeTrack,
 )
+
+if t.TYPE_CHECKING:
+    from rich.progress import Progress, TaskID
 
 
 async def query_youtube(

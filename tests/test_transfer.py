@@ -1,12 +1,19 @@
+from __future__ import annotations
+
 import httpx
 import pytest
 import rich
 
+import typing as t
+
 from spotify_to_musi import ytmusic
 from spotify_to_musi.typings.core import Artist, Track
-from spotify_to_musi.typings.youtube import YouTubeMusicResult
 from spotify_to_musi.youtube import (youtube_music_search_options,
                                      youtube_result_score)
+
+if t.TYPE_CHECKING:
+    from spotify_to_musi.typings.youtube import YouTubeMusicResult
+
 
 pytest_plugins = ("pytest_asyncio",)
 
