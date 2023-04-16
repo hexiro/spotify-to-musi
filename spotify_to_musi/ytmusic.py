@@ -4,11 +4,13 @@ import contextlib
 import time
 import typing as t
 
+from exceptions import YouTubeMusicNoOverlayError, YouTubeMusicSearchError
 from typings.youtube import (YouTubeMusicResult, YouTubeMusicSearch,
                              YouTubeMusicSong, YouTubeMusicVideo)
 
 if t.TYPE_CHECKING:
     import httpx
+
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
 # sourcery skip: use-fstring-for-concatenation
@@ -118,7 +120,7 @@ async def search_music(
     data = resp.json()
 
     if "error" in data:
-        raise Exception(data["error"])
+        raise YouTubeMusicSearchError(data["error"])
 
     return parse_yt_music_response(data)
 
@@ -230,7 +232,7 @@ def parse_video_id(song_or_video_data: dict) -> str:
     overlay = normal_overlay or thumbnail_overlay
 
     if not overlay:
-        raise Exception("No overlay found in song or video data.")
+        raise YouTubeMusicNoOverlayError()
 
     long_key_one = "musicItemThumbnailOverlayRenderer"
     long_key_two = "musicPlayButtonRenderer"

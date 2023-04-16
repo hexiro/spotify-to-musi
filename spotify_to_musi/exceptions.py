@@ -20,3 +20,13 @@ class BlankNameError(ValueError):
 
     def __init__(self: BlankNameError, name: str) -> None:
         super().__init__(f"{name.capitalize()!r} name can't be blank")
+
+
+class YouTubeMusicSearchError(Exception):
+    def __init__(self: YouTubeMusicSearchError, message: str) -> None:
+        super().__init__(f"Error searching YouTube Music: {message!r}")
+
+
+class YouTubeMusicNoOverlayError(Exception):
+    def __init__(self: YouTubeMusicNoOverlayError) -> None:
+        super().__init__("No overlay found in song or video data.")

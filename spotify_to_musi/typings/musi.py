@@ -6,7 +6,8 @@ from dataclasses import field
 
 from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
-from typings.core import Artist  # noqa
+from typings.core import \
+    Artist  # weird pydantic case where this has to be imported
 from typings.youtube import YouTubeTrack
 
 
@@ -55,7 +56,6 @@ class MusiPlaylistDict(t.TypedDict):
 class MusiPlaylist(BaseModel):
     name: str
     tracks: tuple[MusiTrack, ...] = Field(exclude=True)
-    # items: list[MusiItem]
     ciu: str | None = Field(alias="cover_image_url")
     date: int = Field(default_factory=lambda: int(time.time()))
     ot: t.Literal["custom"] = Field(default="custom", const=True)
@@ -85,7 +85,6 @@ class MusiLibraryDict(t.TypedDict):
 
 class MusiLibrary(BaseModel):
     tracks: tuple[MusiTrack, ...] = Field(exclude=True)
-    # items: list[MusiItem]
     ot: t.Literal["custom"] = Field(default="custom", const=True)
     name: t.Literal["My Library"] = Field(default="My Library", const=True)
     date: int = Field(default_factory=lambda: int(time.time()))

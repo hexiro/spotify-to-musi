@@ -22,8 +22,61 @@ ADDRESS_WITH_PORT = f"{ADDRESS}:{PORT}"
 URL = f"http://{ADDRESS_WITH_PORT}/authorize"
 STATE = str(uuid.uuid4())
 
+LOG_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "loggers": {
+        "sanic.root": {"level": "ERROR", "handlers": ["console"]},
+        "sanic.error": {
+            "level": "ERROR",
+            "handlers": ["error_console"],
+            "propagate": True,
+            "qualname": "sanic.error",
+        },
+        "sanic.access": {
+            "level": "ERROR",
+            "handlers": ["access_console"],
+            "propagate": True,
+            "qualname": "sanic.access",
+        },
+        "sanic.server": {
+            "level": "ERROR",
+            "handlers": ["console"],
+            "propagate": True,
+            "qualname": "sanic.server",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "generic",
+            "stream": sys.stdout,
+        },
+        "error_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "generic",
+            "stream": sys.stderr,
+        },
+        "access_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "access",
+            "stream": sys.stdout,
+        },
+    },
+    "formatters": {
+        "generic": {
+            "format": "%(asctime)s [%(process)s] [%(levelname)s] %(message)s",
+            "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
+            "class": "logging.Formatter",
+        },
+        "access": {
+            "format": "%(asctime)s - (%(name)s)[%(levelname)s][%(host)s]: %(request)s %(message)s %(status)s %(byte)s",
+            "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
+            "class": "logging.Formatter",
+        },
+    },
+}
 
-# app = Sanic(__name__)
 
 client_id = os.environ["SPOTIFY_CLIENT_ID"]
 client_secret = os.environ["SPOTIFY_CLIENT_SECRET"]
@@ -88,73 +141,20 @@ def attach_endpoints(app: sanic.Sanic) -> None:
 
         await spotify.populate_user_creds()
 
+        # maybe better way of stopping server?
         async def stop_server() -> None:
             await asyncio.sleep(3)
             app.stop()
 
-        asyncio.create_task(stop_server())
+        # https://beta.ruff.rs/docs/rules/asyncio-dangling-task/#why-is-this-bad
+        # god knows why python functions like this (he doesn't)
+        _stop_server_task = asyncio.create_task(stop_server())
 
         return response.json(body={"success": True})
 
 
 def create_app(app_name: str) -> sanic.Sanic:
-    log_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "loggers": {
-            "sanic.root": {"level": "ERROR", "handlers": ["console"]},
-            "sanic.error": {
-                "level": "ERROR",
-                "handlers": ["error_console"],
-                "propagate": True,
-                "qualname": "sanic.error",
-            },
-            "sanic.access": {
-                "level": "ERROR",
-                "handlers": ["access_console"],
-                "propagate": True,
-                "qualname": "sanic.access",
-            },
-            "sanic.server": {
-                "level": "ERROR",
-                "handlers": ["console"],
-                "propagate": True,
-                "qualname": "sanic.server",
-            },
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "generic",
-                "stream": sys.stdout,
-            },
-            "error_console": {
-                "class": "logging.StreamHandler",
-                "formatter": "generic",
-                "stream": sys.stderr,
-            },
-            "access_console": {
-                "class": "logging.StreamHandler",
-                "formatter": "access",
-                "stream": sys.stdout,
-            },
-        },
-        "formatters": {
-            "generic": {
-                "format": "%(asctime)s [%(process)s] [%(levelname)s] %(message)s",
-                "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
-                "class": "logging.Formatter",
-            },
-            "access": {
-                "format": "%(asctime)s - (%(name)s)[%(levelname)s][%(host)s]: "
-                + "%(request)s %(message)s %(status)s %(byte)s",
-                "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
-                "class": "logging.Formatter",
-            },
-        },
-    }
-
-    app = sanic.Sanic(app_name, log_config=log_config)
+    app = sanic.Sanic(app_name, log_config=LOG_CONFIG)
     attach_endpoints(app)
     return app
 
