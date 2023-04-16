@@ -47,7 +47,8 @@ async def query_youtube(
     await tracks_cache.update_cached_tracks(youtube_tracks)
 
     youtube_liked_tracks = await convert_tracks_to_youtube_tracks(liked_tracks)
-    rich.print(loaded_message(source="YouTube", loaded="Liked Songs", tracks_count=len(youtube_tracks), color="red"))
+    if youtube_liked_tracks:
+        rich.print(loaded_message(source="YouTube", loaded="Liked Songs", tracks_count=len(youtube_liked_tracks), color="red"))
 
     youtube_playlists = await convert_playlists_to_youtube_playlists(playlists)
     for youtube_playlist in youtube_playlists:

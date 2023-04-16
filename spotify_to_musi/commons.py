@@ -1,4 +1,10 @@
+import re
 import asyncio
+
+
+# https://regex101.com/r/r4mp7V/1
+# works on tracks and playlists
+SPOTIFY_ID_REGEX = re.compile(r"((https?:\/\/(.*?)(playlist|track)s?\/|spotify:(playlist|track):)(?P<id>.*))")
 
 
 def task_description(*, querying: str, color: str, subtype: str | None = None) -> str:
@@ -55,14 +61,3 @@ def remove_features_from_title(title: str) -> str:
         title = title[:featuring_index]
 
     return title
-
-
-# reference: https://stackoverflow.com/a/61478547/10830115
-async def gather_with_concurrency(n: int, *coros):
-    semaphore = asyncio.Semaphore(n)
-
-    async def sem_coro(coro):
-        async with semaphore:
-            return await coro
-
-    return await asyncio.gather(*(sem_coro(c) for c in coros))

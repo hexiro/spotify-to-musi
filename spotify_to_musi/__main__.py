@@ -66,7 +66,7 @@ async def transfer(user: bool, playlist: list[str]) -> None:
         rich.print("[bold red]Failed to transfer. No playlist(s) nor the user's library were specified.[/bold red]")
         return
 
-    await transfer_spotify_to_musi()
+    await transfer_spotify_to_musi(transfer_user_library=user, extra_playlist_urls=playlist)
 
 
 @cli.command()
