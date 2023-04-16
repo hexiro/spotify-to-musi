@@ -1,15 +1,16 @@
 import contextlib
 import time
-import httpx
 import typing as t
 
-
-from typings.youtube import YouTubeMusicSearch, YouTubeMusicSong, YouTubeMusicVideo, YouTubeMusicResult
-
+import httpx
+from typings.youtube import (YouTubeMusicResult, YouTubeMusicSearch,
+                             YouTubeMusicSong, YouTubeMusicVideo)
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
 YT_MUSIC_BASE_API = YT_MUSIC_DOMAIN + "/youtubei/v1/"
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0"
+)
 
 
 # key appears to be the same for all unauthenticated users
@@ -21,14 +22,28 @@ YT_MUSIC_HEADERS = {
 }
 
 YT_MUSIC_CONTEXT = {
-    "client": {"clientName": "WEB_REMIX", "clientVersion": "1." + time.strftime("%Y%m%d", time.gmtime()) + ".01.00"},
+    "client": {
+        "clientName": "WEB_REMIX",
+        "clientVersion": "1." + time.strftime("%Y%m%d", time.gmtime()) + ".01.00",
+    },
 }
 
 
-CategoryKey: t.TypeAlias = t.Literal["musicCardShelfRenderer", "musicShelfRenderer", "itemSectionRenderer"]
-Category: t.TypeAlias = t.Literal["Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"]
+CategoryKey: t.TypeAlias = t.Literal[
+    "musicCardShelfRenderer", "musicShelfRenderer", "itemSectionRenderer"
+]
+Category: t.TypeAlias = t.Literal[
+    "Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"
+]
 
-CATEGORIES: t.Final = ("Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists")
+CATEGORIES: t.Final = (
+    "Songs",
+    "Videos",
+    "Albums",
+    "Artists",
+    "Community playlists",
+    "Featured playlists",
+)
 TOP_RESULT_KEY: t.Final = "musicCardShelfRenderer"
 NORMAL_RESULT_KEY: t.Final = "musicShelfRenderer"
 
@@ -77,7 +92,9 @@ def views_as_integer(views: str) -> int:
     return int(float(num_string) * multipliers[unit_string])
 
 
-async def search_music(query: str, client: httpx.AsyncClient) -> YouTubeMusicSearch | None:
+async def search_music(
+    query: str, client: httpx.AsyncClient
+) -> YouTubeMusicSearch | None:
     """
     Search YouTube music for a query.
     """
@@ -100,7 +117,9 @@ async def search_music(query: str, client: httpx.AsyncClient) -> YouTubeMusicSea
 
 
 def tabs_from_scope(data: dict) -> dict:
-    tabs = data["contents"]["tabbedSearchResultsRenderer"]["tabs"][0]["tabRenderer"]["content"]
+    tabs = data["contents"]["tabbedSearchResultsRenderer"]["tabs"][0]["tabRenderer"][
+        "content"
+    ]
     return tabs
 
 
@@ -214,7 +233,9 @@ def parse_video_id(song_or_video_data: dict) -> str:
     long_key_one = "musicItemThumbnailOverlayRenderer"
     long_key_two = "musicPlayButtonRenderer"
 
-    video_id: str = overlay[long_key_one]["content"][long_key_two]["playNavigationEndpoint"]["watchEndpoint"]["videoId"]
+    video_id: str = overlay[long_key_one]["content"][long_key_two][
+        "playNavigationEndpoint"
+    ]["watchEndpoint"]["videoId"]
     return video_id
 
 
@@ -226,17 +247,25 @@ def parse_top_result(top_result_data: dict) -> YouTubeMusicResult | None:
     with contextlib.suppress(KeyError):
         long_key_one = "browseEndpointContextSupportedConfigs"
         lone_key_two = "browseEndpointContextMusicConfig"
-        page_type = navigation_endpoint["browseEndpoint"][long_key_one][lone_key_two]["pageType"]
+        page_type = navigation_endpoint["browseEndpoint"][long_key_one][lone_key_two][
+            "pageType"
+        ]
     with contextlib.suppress(KeyError):
         long_key_one = "watchEndpointMusicSupportedConfigs"
         lone_key_two = "watchEndpointMusicConfig"
-        page_type = navigation_endpoint["watchEndpoint"][long_key_one][lone_key_two]["musicVideoType"]
+        page_type = navigation_endpoint["watchEndpoint"][long_key_one][lone_key_two][
+            "musicVideoType"
+        ]
 
     if not page_type:
         # page_type not found
         return None
 
-    if page_type not in ("MUSIC_VIDEO_TYPE_OMW", "MUSIC_VIDEO_TYPE_OMV", "MUSIC_VIDEO_TYPE_ATV"):
+    if page_type not in (
+        "MUSIC_VIDEO_TYPE_OMW",
+        "MUSIC_VIDEO_TYPE_OMV",
+        "MUSIC_VIDEO_TYPE_ATV",
+    ):
         # not a song or video
         return None
 
@@ -252,7 +281,9 @@ def parse_top_result(top_result_data: dict) -> YouTubeMusicResult | None:
 
     if page_type == "MUSIC_VIDEO_TYPE_ATV":
         is_explicit = is_song_explicit(top_result_data)
-        return YouTubeMusicSong(**title_and_subtitle_data, video_id=video_id, is_explicit=is_explicit)
+        return YouTubeMusicSong(
+            **title_and_subtitle_data, video_id=video_id, is_explicit=is_explicit
+        )
     else:  # page_type = "MUSIC_VIDEO_TYPE_OMW"
         return YouTubeMusicVideo(**title_and_subtitle_data, video_id=video_id)
 
@@ -267,15 +298,21 @@ def is_song_explicit(song_or_video_data: dict) -> bool:
 
     with contextlib.suppress(KeyError):
         for badge in badges:
-            label: str = badge["musicInlineBadgeRenderer"]["accessibilityData"]["accessibilityData"]["label"]
+            label: str = badge["musicInlineBadgeRenderer"]["accessibilityData"][
+                "accessibilityData"
+            ]["label"]
             if label == "Explicit":
                 return True
 
     return False
 
 
-def parse_song_or_video(song_or_video_data: dict) -> YouTubeMusicSong | YouTubeMusicVideo | None:
-    title_and_subtitle_data = parse_song_or_video_title_and_subtitle_data(song_or_video_data)
+def parse_song_or_video(
+    song_or_video_data: dict,
+) -> YouTubeMusicSong | YouTubeMusicVideo | None:
+    title_and_subtitle_data = parse_song_or_video_title_and_subtitle_data(
+        song_or_video_data
+    )
     if not title_and_subtitle_data:
         return None
 
@@ -285,13 +322,17 @@ def parse_song_or_video(song_or_video_data: dict) -> YouTubeMusicSong | YouTubeM
 
     if is_song:
         is_explicit = is_song_explicit(song_or_video_data)
-        return YouTubeMusicSong(**title_and_subtitle_data, video_id=video_id, is_explicit=is_explicit)
+        return YouTubeMusicSong(
+            **title_and_subtitle_data, video_id=video_id, is_explicit=is_explicit
+        )
 
     # is video
     return YouTubeMusicVideo(**title_and_subtitle_data, video_id=video_id)
 
 
-def parse_song_or_video_title_and_subtitle_data(song_or_video_data: dict) -> dict | None:
+def parse_song_or_video_title_and_subtitle_data(
+    song_or_video_data: dict,
+) -> dict | None:
     long_key = "musicResponsiveListItemFlexColumnRenderer"
 
     title_data = song_or_video_data["flexColumns"][0][long_key]["text"]
@@ -301,7 +342,9 @@ def parse_song_or_video_title_and_subtitle_data(song_or_video_data: dict) -> dic
     return title_and_subtitle_data
 
 
-def parse_category(song_or_video_data: dict) -> list[YouTubeMusicSong | YouTubeMusicVideo] | None:
+def parse_category(
+    song_or_video_data: dict,
+) -> list[YouTubeMusicSong | YouTubeMusicVideo] | None:
     song_or_video_data = song_or_video_data[NORMAL_RESULT_KEY]
 
     category_type: Category = song_or_video_data["title"]["runs"][0]["text"]

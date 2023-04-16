@@ -1,30 +1,17 @@
 import asyncio
 import typing as t
+
 import httpx
-
 import rich
-from rich.progress import Progress, TaskID
-
 import tracks_cache
-from commons import (
-    remove_features_from_title,
-    remove_parens,
-    task_description,
-    loaded_message,
-    skipping_message,
-)
-
-
 import ytmusic
-from typings.core import Playlist, Track, Artist
-from typings.youtube import (
-    YouTubePlaylist,
-    YouTubeTrack,
-    YouTubeMusicSearch,
-    YouTubeMusicResult,
-    YouTubeMusicArtist,
-    YouTubeMusicSong,
-)
+from commons import (loaded_message, remove_features_from_title, remove_parens,
+                     skipping_message, task_description)
+from rich.progress import Progress, TaskID
+from typings.core import Artist, Playlist, Track
+from typings.youtube import (YouTubeMusicArtist, YouTubeMusicResult,
+                             YouTubeMusicSearch, YouTubeMusicSong,
+                             YouTubePlaylist, YouTubeTrack)
 
 
 async def query_youtube(
@@ -41,14 +28,23 @@ async def query_youtube(
         deduplicated_tracks.update(set(playlist.tracks))
 
     total = len(deduplicated_tracks)
-    task_id = progress.add_task(task_description(querying="YouTube", color="red"), total=total)
+    task_id = progress.add_task(
+        task_description(querying="YouTube", color="red"), total=total
+    )
 
     youtube_tracks = await fetch_youtube_tracks(deduplicated_tracks, progress, task_id)
     await tracks_cache.update_cached_tracks(youtube_tracks)
 
     youtube_liked_tracks = await convert_tracks_to_youtube_tracks(liked_tracks)
     if youtube_liked_tracks:
-        rich.print(loaded_message(source="YouTube", loaded="Liked Songs", tracks_count=len(youtube_liked_tracks), color="red"))
+        rich.print(
+            loaded_message(
+                source="YouTube",
+                loaded="Liked Songs",
+                tracks_count=len(youtube_liked_tracks),
+                color="red",
+            )
+        )
 
     youtube_playlists = await convert_playlists_to_youtube_playlists(playlists)
     for youtube_playlist in youtube_playlists:
@@ -64,7 +60,9 @@ async def query_youtube(
     return youtube_playlists, youtube_liked_tracks
 
 
-async def convert_tracks_to_youtube_tracks(tracks: t.Iterable[Track]) -> tuple[YouTubeTrack, ...]:
+async def convert_tracks_to_youtube_tracks(
+    tracks: t.Iterable[Track],
+) -> tuple[YouTubeTrack, ...]:
     return await tracks_cache.match_tracks_to_youtube_tracks(tracks)
 
 
@@ -79,7 +77,9 @@ async def convert_playlist_to_youtube_playlist(playlist: Playlist) -> YouTubePla
     return youtube_playlist
 
 
-async def convert_playlists_to_youtube_playlists(playlists: t.Iterable[Playlist]) -> tuple[YouTubePlaylist, ...]:
+async def convert_playlists_to_youtube_playlists(
+    playlists: t.Iterable[Playlist],
+) -> tuple[YouTubePlaylist, ...]:
     tasks: list[asyncio.Task[YouTubePlaylist]] = []
 
     for playlist in playlists:
@@ -115,7 +115,9 @@ def youtube_music_search_options(
 async def convert_track_to_youtube_track(
     track: Track, client: httpx.AsyncClient, progress: Progress, task_id: TaskID
 ) -> YouTubeTrack | None:
-    cached_tracks_dict: dict[Track, YouTubeTrack] = await tracks_cache.load_cached_tracks_dict()
+    cached_tracks_dict: dict[
+        Track, YouTubeTrack
+    ] = await tracks_cache.load_cached_tracks_dict()
     cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
 
     advance = lambda: progress.advance(task_id, advance=1)
@@ -145,7 +147,10 @@ async def convert_track_to_youtube_track(
     if top_score < 1:
         advance()
         rich.print(
-            skipping_message(text=track.colorized_query, reason=f"Low Score: [white]{round(top_score, 3)}[/white]")
+            skipping_message(
+                text=track.colorized_query,
+                reason=f"Low Score: [white]{round(top_score, 3)}[/white]",
+            )
         )
         return None
 
@@ -164,7 +169,9 @@ async def convert_track_to_youtube_track(
         artists=track.artists,
         youtube_name=youtube_music_result.title,
         youtube_duration=youtube_music_result.duration,
-        youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
+        youtube_artists=tuple(
+            Artist(name=x.name) for x in youtube_music_result.artists
+        ),
         album_name=album_name,
         is_explicit=is_explicit,
         video_id=youtube_music_result.video_id,
@@ -181,12 +188,16 @@ async def fetch_youtube_tracks(
         youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []
 
         for track in tracks:
-            coro = convert_track_to_youtube_track(track=track, client=client, progress=progress, task_id=task_id)
+            coro = convert_track_to_youtube_track(
+                track=track, client=client, progress=progress, task_id=task_id
+            )
             task = asyncio.create_task(coro)
             youtube_tracks_tasks.append(task)
 
         youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
-        youtube_tracks: tuple[YouTubeTrack, ...] = tuple(x for x in youtube_tracks if x is not None)
+        youtube_tracks: tuple[YouTubeTrack, ...] = tuple(
+            x for x in youtube_tracks if x is not None
+        )
 
     return youtube_tracks
 
@@ -227,7 +238,9 @@ def duration_score(real_duration: int, result_duration: int) -> float:
 
 def title_score(real_title: str, result_title: str) -> float:
     def remove_extraneous_data(title: str):
-        return remove_artist_from_title(remove_features_from_title(remove_parens(title))).strip()
+        return remove_artist_from_title(
+            remove_features_from_title(remove_parens(title))
+        ).strip()
 
     real_title = remove_extraneous_data(real_title.lower())
     result_title = remove_extraneous_data(result_title.lower())
@@ -247,7 +260,9 @@ def explicit_score(real_is_explicit: bool, result_is_explicit: bool) -> float:
     return 0
 
 
-def artists_score(real_artists: tuple[Artist, ...], result_artists: tuple[YouTubeMusicArtist, ...]) -> float:
+def artists_score(
+    real_artists: tuple[Artist, ...], result_artists: tuple[YouTubeMusicArtist, ...]
+) -> float:
     real_artist_names = [a.name.lower() for a in real_artists]
     result_artist_names = [a.name.lower() for a in result_artists]
 

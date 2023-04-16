@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-
-from pydantic.dataclasses import dataclass
 from dataclasses import field
 
 from commons import remove_features_from_title, remove_parens
+from pydantic.dataclasses import dataclass
 
 
 def validate_tuple_isnt_empty(value: tuple) -> tuple:
@@ -69,9 +68,7 @@ class Track:
         """
         Colorized query used w/ rich lib for printing
         """
-        return (
-            f"[bold white]{self.primary_artist.name}[/bold white] - [grey53]{self.name}{self.featuring_text}[/grey53]"
-        )
+        return f"[bold white]{self.primary_artist.name}[/bold white] - [grey53]{self.name}{self.featuring_text}[/grey53]"
 
 
 @dataclass(frozen=True)

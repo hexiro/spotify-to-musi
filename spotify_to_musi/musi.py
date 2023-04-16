@@ -4,26 +4,18 @@ import typing as t
 import uuid
 
 import httpx
-import rich
-
-import pydantic.json
 import pydantic.error_wrappers
-
-from typings.youtube import YouTubeTrack, YouTubePlaylist
-from typings.musi import (
-    MusiResponse,
-    MusiVideo,
-    MusiLibrary,
-    MusiTrack,
-    MusiPlaylist,
-    MusiLibraryDict,
-    MusiVideoDict,
-    MusiPlaylistDict,
-)
+import pydantic.json
+import rich
+from typings.musi import (MusiLibrary, MusiLibraryDict, MusiPlaylist,
+                          MusiPlaylistDict, MusiResponse, MusiTrack, MusiVideo,
+                          MusiVideoDict)
+from typings.youtube import YouTubePlaylist, YouTubeTrack
 
 
 def convert_from_youtube(
-    youtube_playlists: t.Iterable[YouTubePlaylist], youtube_liked_tracks: t.Iterable[YouTubeTrack]
+    youtube_playlists: t.Iterable[YouTubePlaylist],
+    youtube_liked_tracks: t.Iterable[YouTubeTrack],
 ) -> tuple[tuple[MusiPlaylist, ...], MusiLibrary]:
     musi_playlists = convert_playlists_to_musi_playlists(youtube_playlists)
     musi_library = covert_youtube_tracks_to_musi_library(youtube_liked_tracks)
@@ -31,7 +23,9 @@ def convert_from_youtube(
     return musi_playlists, musi_library
 
 
-def covert_youtube_tracks_to_musi_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> tuple[MusiTrack, ...]:
+def covert_youtube_tracks_to_musi_tracks(
+    youtube_tracks: t.Iterable[YouTubeTrack],
+) -> tuple[MusiTrack, ...]:
     musi_tracks: list[MusiTrack] = []
 
     for youtube_track in youtube_tracks:
@@ -52,12 +46,16 @@ def covert_youtube_tracks_to_musi_tracks(youtube_tracks: t.Iterable[YouTubeTrack
     return tuple(musi_tracks)
 
 
-def covert_youtube_tracks_to_musi_library(youtube_tracks: t.Iterable[YouTubeTrack]) -> MusiLibrary:
+def covert_youtube_tracks_to_musi_library(
+    youtube_tracks: t.Iterable[YouTubeTrack],
+) -> MusiLibrary:
     musi_tracks = covert_youtube_tracks_to_musi_tracks(youtube_tracks)
     return MusiLibrary(tracks=musi_tracks)
 
 
-def convert_playlists_to_musi_playlists(youtube_playlists: t.Iterable[YouTubePlaylist]) -> tuple[MusiPlaylist, ...]:
+def convert_playlists_to_musi_playlists(
+    youtube_playlists: t.Iterable[YouTubePlaylist],
+) -> tuple[MusiPlaylist, ...]:
     musi_playlists: list[MusiPlaylist] = []
 
     for youtube_playlist in youtube_playlists:
@@ -76,10 +74,14 @@ def generate_musi_uuid(musi_videos: list[MusiVideo]) -> uuid.UUID:
     """
     Generate a deterministic UUID based on the video IDs of the provided MusiVideo-s.
     """
-    musi_video_dicts = [musi_video.dict(exclude={"created_date": True}) for musi_video in musi_videos]
+    musi_video_dicts = [
+        musi_video.dict(exclude={"created_date": True}) for musi_video in musi_videos
+    ]
     musi_video_dicts.sort(key=lambda item: item["video_creator"])
 
-    musi_videos_json = json.dumps(musi_video_dicts, default=pydantic.json.pydantic_encoder)
+    musi_videos_json = json.dumps(
+        musi_video_dicts, default=pydantic.json.pydantic_encoder
+    )
     musi_videos_json_bytes = musi_videos_json.encode("utf-8")
 
     md5_hash = hashlib.md5(musi_videos_json_bytes)

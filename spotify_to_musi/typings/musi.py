@@ -4,9 +4,8 @@ import time
 import typing as t
 from dataclasses import field
 
-from pydantic.dataclasses import dataclass
 from pydantic import BaseModel, Field
-
+from pydantic.dataclasses import dataclass
 from typings.core import Artist  # noqa
 from typings.youtube import YouTubeTrack
 
@@ -94,7 +93,12 @@ class MusiLibrary(BaseModel):
     def dict(self, **kwargs) -> MusiLibraryDict:
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
         super_dict = super().dict(**kwargs)
-        return {"ot": super_dict["ot"], "items": items, "name": super_dict["name"], "date": super_dict["date"]}
+        return {
+            "ot": super_dict["ot"],
+            "items": items,
+            "name": super_dict["name"],
+            "date": super_dict["date"],
+        }
 
 
 class MusiVideoDict(t.TypedDict):

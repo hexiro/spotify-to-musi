@@ -2,11 +2,11 @@ import httpx
 import pytest
 import rich
 
-
 from spotify_to_musi import ytmusic
 from spotify_to_musi.typings.core import Artist, Track
 from spotify_to_musi.typings.youtube import YouTubeMusicResult
-from spotify_to_musi.youtube import youtube_result_score, youtube_music_search_options
+from spotify_to_musi.youtube import (youtube_music_search_options,
+                                     youtube_result_score)
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -15,7 +15,10 @@ track_to_expected_video_ids: list[tuple[Track, list[str]]] = [
     (
         Track(
             name="Demon Time (feat. Ski Mask The Slump God)",
-            artists=(Artist(name="Trippie Redd"), Artist(name="Ski Mask The Slump God")),
+            artists=(
+                Artist(name="Trippie Redd"),
+                Artist(name="Ski Mask The Slump God"),
+            ),
             duration=159,
             album_name="Trip At Knight (Complete Edition)",
             is_explicit=True,

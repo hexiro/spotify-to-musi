@@ -1,22 +1,18 @@
-import os
-import sys
-import json
 import asyncio
 import functools
+import json
+import os
+import sys
 import uuid
 import webbrowser
-
 
 import aiofiles
 import sanic
 import sanic.response
+from paths import SPOTIFY_CREDENTIALS_PATH
+from pyfy import AsyncSpotify, AuthError, ClientCreds
 from sanic import SanicException, response
 from sanic.worker.loader import AppLoader
-from pyfy import AuthError, ClientCreds, AsyncSpotify
-
-
-from paths import SPOTIFY_CREDENTIALS_PATH
-
 
 ADDRESS = "localhost"
 PORT = 5000
@@ -34,7 +30,11 @@ client_creds = ClientCreds(
     client_id=client_id,
     client_secret=client_secret,
     redirect_uri="http://localhost:5000/callback/spotify",
-    scopes=["user-library-read", "playlist-read-collaborative", "playlist-read-private"],
+    scopes=[
+        "user-library-read",
+        "playlist-read-collaborative",
+        "playlist-read-private",
+    ],
 )
 
 spotify = AsyncSpotify(client_creds=client_creds)
@@ -54,7 +54,9 @@ def attach_endpoints(app: sanic.Sanic):
             status=500,
         )
 
-    @app.route("/callback/spotify")  # REGISTER THIS ROUTE AS REDIRECT URI IN SPOTIFY DEV CONSOLE
+    @app.route(
+        "/callback/spotify"
+    )  # REGISTER THIS ROUTE AS REDIRECT URI IN SPOTIFY DEV CONSOLE
     async def _spotify_callback(request: sanic.Request):
         error = request.args.get("error")
         code = request.args.get("code")

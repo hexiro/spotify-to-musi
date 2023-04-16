@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, validator
 import typing as t
+
+from pydantic import BaseModel, validator
 
 
 class SpotifyImage(BaseModel):
@@ -108,7 +109,11 @@ class SpotifyTrack(BaseModel):
     @property
     def album_name(self) -> str | None:
         # song is a single and has the 'single' as the album name, i represent this as None internally to help with calucations later
-        if self.album.album_type == "single" or self.album.album_group == "single" or self.album.total_tracks == 1:
+        if (
+            self.album.album_type == "single"
+            or self.album.album_group == "single"
+            or self.album.total_tracks == 1
+        ):
             return None
 
         return self.album.name

@@ -1,10 +1,11 @@
-import re
 import asyncio
-
+import re
 
 # https://regex101.com/r/r4mp7V/1
 # works on tracks and playlists
-SPOTIFY_ID_REGEX = re.compile(r"((https?:\/\/(.*?)(playlist|track)s?\/|spotify:(playlist|track):)(?P<id>.*))")
+SPOTIFY_ID_REGEX = re.compile(
+    r"((https?:\/\/(.*?)(playlist|track)s?\/|spotify:(playlist|track):)(?P<id>.*))"
+)
 
 
 def task_description(*, querying: str, color: str, subtype: str | None = None) -> str:
@@ -17,7 +18,14 @@ def task_description(*, querying: str, color: str, subtype: str | None = None) -
     return desc
 
 
-def loaded_message(*, source: str, loaded: str, color: str, name: str | None = None, tracks_count: int | None = None):
+def loaded_message(
+    *,
+    source: str,
+    loaded: str,
+    color: str,
+    name: str | None = None,
+    tracks_count: int | None = None,
+):
     msg = f"[bold {color}]{source.upper()}:[/bold {color}] Loaded {loaded} "
 
     tracks_parens = ("(", ")")
@@ -32,7 +40,9 @@ def loaded_message(*, source: str, loaded: str, color: str, name: str | None = N
 
 
 def skipping_message(text: str, reason: str) -> str:
-    return f"[bold yellow1]SKIPPING:[/bold yellow1] {text} [yellow1][{reason}][/yellow1]"
+    return (
+        f"[bold yellow1]SKIPPING:[/bold yellow1] {text} [yellow1][{reason}][/yellow1]"
+    )
 
 
 def remove_parens(title: str) -> str:

@@ -1,8 +1,8 @@
-from typings.core import Playlist, Track, Artist
+from dataclasses import field
 
 from pydantic import BaseModel, validator
 from pydantic.dataclasses import dataclass
-from dataclasses import field
+from typings.core import Artist, Playlist, Track
 
 
 class YouTubeMusicArtist(BaseModel):
@@ -25,7 +25,9 @@ class YouTubeMusicSong(_YouTubeMusicResultType):
     is_explicit: bool
 
     @validator("album")
-    def must_not_be_single(cls, v: YouTubeMusicAlbum, values) -> YouTubeMusicAlbum | None:
+    def must_not_be_single(
+        cls, v: YouTubeMusicAlbum, values
+    ) -> YouTubeMusicAlbum | None:
         if v.name == values["title"]:
             return None
 

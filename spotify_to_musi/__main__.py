@@ -5,15 +5,13 @@ import asyncio
 import functools
 import typing as t
 
-import rich
-import pyfy.excs
-
-import rich_click as click
-
-
-import spotify
 import oauth
+import pyfy.excs
+import rich
+import rich_click as click
+import spotify
 from main import transfer_spotify_to_musi
+
 from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 
@@ -48,7 +46,13 @@ async def cli():
     default=False,
     show_default=True,
 )
-@click.option("-pl", "--playlist", help="Transfer Spotify playlist(s) by URL.", multiple=True, type=str)
+@click.option(
+    "-pl",
+    "--playlist",
+    help="Transfer Spotify playlist(s) by URL.",
+    multiple=True,
+    type=str,
+)
 async def transfer(user: bool, playlist: list[str]) -> None:
     """
     Transfer songs from Spotify to Musi.
@@ -59,14 +63,20 @@ async def transfer(user: bool, playlist: list[str]) -> None:
     try:
         await spotify.spotify.me()
     except pyfy.excs.SpotifyError:
-        rich.print("[bold red]Spotify not authorized. Please run `[white]setup[/white]` first.[/bold red]")
+        rich.print(
+            "[bold red]Spotify not authorized. Please run `[white]setup[/white]` first.[/bold red]"
+        )
         return
 
     if not user and not playlist:
-        rich.print("[bold red]Failed to transfer. No playlist(s) nor the user's library were specified.[/bold red]")
+        rich.print(
+            "[bold red]Failed to transfer. No playlist(s) nor the user's library were specified.[/bold red]"
+        )
         return
 
-    await transfer_spotify_to_musi(transfer_user_library=user, extra_playlist_urls=playlist)
+    await transfer_spotify_to_musi(
+        transfer_user_library=user, extra_playlist_urls=playlist
+    )
 
 
 @cli.command()
@@ -95,7 +105,9 @@ async def setup() -> None:
         await spotify.spotify.me()
     except pyfy.excs.SpotifyError:  # spotipy.oauth2.SpotifyOauthError
         SPOTIFY_CREDENTIALS_PATH.unlink()
-        rich.print("[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]")
+        rich.print(
+            "[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]"
+        )
 
     rich.print("[bold green]Spotify Authorized![/bold green]")
 

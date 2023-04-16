@@ -2,21 +2,19 @@ import asyncio
 import json
 import math
 import os
-import aiofiles
-import pydantic
-import rich
 import typing as t
 
+import aiofiles
+import pydantic
 import pyfy.excs
-from rich.progress import Progress, TaskID
-
+import rich
+from commons import (SPOTIFY_ID_REGEX, loaded_message, skipping_message,
+                     task_description)
 from paths import SPOTIFY_CREDENTIALS_PATH
-from typings.core import Playlist, Track, Artist
-from typings.spotify import SpotifyPlaylist, SpotifyTrack, BasicSpotifyPlaylist
-from commons import task_description, loaded_message, skipping_message, SPOTIFY_ID_REGEX
-
-
 from pyfy import AsyncSpotify, ClientCreds
+from rich.progress import Progress, TaskID
+from typings.core import Artist, Playlist, Track
+from typings.spotify import BasicSpotifyPlaylist, SpotifyPlaylist, SpotifyTrack
 
 client_id = os.environ["SPOTIFY_CLIENT_ID"]
 client_secret = os.environ["SPOTIFY_CLIENT_SECRET"]
@@ -25,7 +23,11 @@ client_creds = ClientCreds(
     client_id=client_id,
     client_secret=client_secret,
     redirect_uri="http://localhost:5000/callback/spotify",
-    scopes=["user-library-read", "playlist-read-collaborative", "playlist-read-private"],
+    scopes=[
+        "user-library-read",
+        "playlist-read-collaborative",
+        "playlist-read-private",
+    ],
 )
 
 spotify = AsyncSpotify(client_creds=client_creds)
@@ -57,16 +59,24 @@ async def query_spotify(
     spotify_liked_tracks: list[SpotifyTrack] = []
     spotify_basic_playlists: list[BasicSpotifyPlaylist] = []
 
-    task_id = progress.add_task(task_description(querying="Spotify", subtype="Playlists", color="green"), start=False)
+    task_id = progress.add_task(
+        task_description(querying="Spotify", subtype="Playlists", color="green"),
+        start=False,
+    )
 
     if transfer_user_library:
-        spotify_basic_user_playlists = await fetch_basic_user_spotify_playlists(task_id=task_id, progress=progress)
+        spotify_basic_user_playlists = await fetch_basic_user_spotify_playlists(
+            task_id=task_id, progress=progress
+        )
         spotify_basic_playlists.extend(spotify_basic_user_playlists)
 
         task_id = progress.add_task(
-            task_description(querying="Spotify", subtype="Liked Songs", color="green"), start=False
+            task_description(querying="Spotify", subtype="Liked Songs", color="green"),
+            start=False,
         )
-        spotify_liked_user_tracks = await fetch_spotify_user_liked_tracks(task_id=task_id, progress=progress)
+        spotify_liked_user_tracks = await fetch_spotify_user_liked_tracks(
+            task_id=task_id, progress=progress
+        )
         spotify_liked_tracks.extend(spotify_liked_user_tracks)
 
     if extra_playlist_urls:
@@ -76,10 +86,13 @@ async def query_spotify(
         spotify_basic_playlists.extend(spotify_basic_extra_playlists)
 
     task_id = progress.add_task(
-        task_description(querying="Spotify", subtype="Playlist Tracks", color="green"), start=False
+        task_description(querying="Spotify", subtype="Playlist Tracks", color="green"),
+        start=False,
     )
 
-    spotify_playlists = await load_basic_playlists(spotify_basic_playlists, task_id=task_id, progress=progress)
+    spotify_playlists = await load_basic_playlists(
+        spotify_basic_playlists, task_id=task_id, progress=progress
+    )
 
     playlists = covert_spotify_playlists_to_playlists(spotify_playlists)
     liked_tracks = covert_spotify_tracks_to_tracks(spotify_liked_tracks)
@@ -133,12 +146,16 @@ async def fetch_basic_spotify_playlists(
     progress.start_task(task_id)
 
     for playlist_url in playlist_urls:
-        coro = fetch_basic_spotify_playlist(playlist_url, task_id=task_id, progress=progress)
+        coro = fetch_basic_spotify_playlist(
+            playlist_url, task_id=task_id, progress=progress
+        )
         task = asyncio.create_task(coro)
         tasks.append(task)
 
     spotify_basic_playlists: list[BasicSpotifyPlaylist | None] = await asyncio.gather(*tasks)  # type: ignore
-    spotify_basic_playlists: list[BasicSpotifyPlaylist] = [p for p in spotify_basic_playlists if p is not None]
+    spotify_basic_playlists: list[BasicSpotifyPlaylist] = [
+        p for p in spotify_basic_playlists if p is not None
+    ]
     return spotify_basic_playlists
 
 
@@ -157,7 +174,10 @@ async def fetch_basic_spotify_playlist(
         return BasicSpotifyPlaylist(**spotify_basic_playlist)  # type: ignore
     except pyfy.excs.SpotifyError:
         rich.print(
-            skipping_message(text=f"[blue underline]{playlist_url}[/blue underline]", reason="Invalid playlist link.")
+            skipping_message(
+                text=f"[blue underline]{playlist_url}[/blue underline]",
+                reason="Invalid playlist link.",
+            )
         )
         return None
     finally:
@@ -180,7 +200,9 @@ async def load_basic_playlists(
     progress.start_task(task_id)
 
     for basic_playlist in basic_spotify_playlists:
-        coro = basic_playlist_to_playlist(basic_playlist, task_id=task_id, progress=progress)
+        coro = basic_playlist_to_playlist(
+            basic_playlist, task_id=task_id, progress=progress
+        )
         task = asyncio.create_task(coro)
         playlist_tasks.append(task)
 
@@ -196,7 +218,9 @@ async def basic_playlist_to_playlist(
 ) -> SpotifyPlaylist:
     await init()
 
-    spotify_tracks = await load_basic_playlist_tracks(basic_playlist, task_id=task_id, progress=progress)
+    spotify_tracks = await load_basic_playlist_tracks(
+        basic_playlist, task_id=task_id, progress=progress
+    )
 
     playlist = SpotifyPlaylist(
         name=basic_playlist.name,
@@ -235,7 +259,9 @@ async def load_basic_playlist_tracks(
 
     async def load_playlist_tracks(offset: int, limit: int):
         try:
-            return await spotify.playlist_tracks(playlist_id=basic_spotify_playlist.id, offset=offset, limit=limit)
+            return await spotify.playlist_tracks(
+                playlist_id=basic_spotify_playlist.id, offset=offset, limit=limit
+            )
         finally:
             progress.update(task_id, advance=1)
 
@@ -246,7 +272,9 @@ async def load_basic_playlist_tracks(
 
         spotify_tracks_items_tasks.append(task)  # type: ignore
 
-    spotify_tracks_items: list[dict[t.Literal["items"], list[dict]]] = await asyncio.gather(*spotify_tracks_items_tasks)
+    spotify_tracks_items: list[
+        dict[t.Literal["items"], list[dict]]
+    ] = await asyncio.gather(*spotify_tracks_items_tasks)
     spotify_track_items: list[dict] = []
 
     for spotify_tracks_item in spotify_tracks_items:
@@ -265,7 +293,9 @@ def filter_spotify_tracks(spotify_tracks: list[SpotifyTrack]) -> list[SpotifyTra
     return spotify_tracks
 
 
-def spotify_track_items_to_spotify_tracks(spotify_track_items: list[dict[str, t.Any]]) -> list[SpotifyTrack]:
+def spotify_track_items_to_spotify_tracks(
+    spotify_track_items: list[dict[str, t.Any]]
+) -> list[SpotifyTrack]:
     spotify_tracks: list[SpotifyTrack] = []
     for spotify_track_item in spotify_track_items:
         try:
@@ -311,7 +341,9 @@ async def fetch_spotify_user_liked_tracks(
         liked_tracks_resp = await load_user_tracks(offset=offset, limit=limit)
         liked_tracks_items.extend(liked_tracks_resp["items"])  # type: ignore
 
-    liked_tracks: list[SpotifyTrack] = spotify_track_items_to_spotify_tracks(liked_tracks_items)
+    liked_tracks: list[SpotifyTrack] = spotify_track_items_to_spotify_tracks(
+        liked_tracks_items
+    )
 
     rich.print(
         loaded_message(
@@ -347,11 +379,15 @@ def covert_spotify_track_to_track(spotify_track: SpotifyTrack) -> Track:
     return track
 
 
-def covert_spotify_playlists_to_playlists(spotify_playlists: t.Iterable[SpotifyPlaylist]) -> tuple[Playlist, ...]:
+def covert_spotify_playlists_to_playlists(
+    spotify_playlists: t.Iterable[SpotifyPlaylist],
+) -> tuple[Playlist, ...]:
     return tuple(covert_spotify_playlist_to_playlist(p) for p in spotify_playlists)
 
 
-def covert_spotify_tracks_to_tracks(spotify_tracks: t.Iterable[SpotifyTrack]) -> tuple[Track, ...]:
+def covert_spotify_tracks_to_tracks(
+    spotify_tracks: t.Iterable[SpotifyTrack],
+) -> tuple[Track, ...]:
     return tuple(covert_spotify_track_to_track(t) for t in spotify_tracks)
 
 
