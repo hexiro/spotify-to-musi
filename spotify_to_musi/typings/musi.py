@@ -7,8 +7,7 @@ from dataclasses import field
 from pydantic.dataclasses import dataclass
 from pydantic import BaseModel, Field
 
-# TODO: figure out why it breaks w/o this import
-from typings.core import Artist
+from typings.core import Artist  # noqa
 from typings.youtube import YouTubeTrack
 
 

@@ -40,7 +40,6 @@ async def cache_youtube_tracks() -> None:
         await f.write(youtube_tracks_json)
 
 
-# TODO: determine ideal maxsize
 @AsyncLRU(maxsize=None)  # type: ignore
 async def load_cached_youtube_tracks() -> set[YouTubeTrack]:
     """

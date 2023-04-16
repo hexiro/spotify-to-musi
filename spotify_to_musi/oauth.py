@@ -3,6 +3,7 @@ import sys
 import json
 import asyncio
 import functools
+import uuid
 import webbrowser
 
 
@@ -21,8 +22,7 @@ ADDRESS = "localhost"
 PORT = 5000
 ADDRESS_WITH_PORT = ADDRESS + ":" + str(PORT)
 URL = "http://" + ADDRESS_WITH_PORT + "/authorize"
-# TODO: figure out if this matters / make it a random string if it does
-STATE = "123"
+STATE = str(uuid.uuid4())
 
 
 # app = Sanic(__name__)

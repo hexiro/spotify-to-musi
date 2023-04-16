@@ -1,5 +1,3 @@
-import typing as t
-
 from typings.core import Playlist, Track, Artist
 
 from pydantic import BaseModel, validator
