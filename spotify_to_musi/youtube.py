@@ -5,13 +5,23 @@ import httpx
 import rich
 import tracks_cache
 import ytmusic
-from commons import (loaded_message, remove_features_from_title, remove_parens,
-                     skipping_message, task_description)
+from commons import (
+    loaded_message,
+    remove_features_from_title,
+    remove_parens,
+    skipping_message,
+    task_description,
+)
 from rich.progress import Progress, TaskID
 from typings.core import Artist, Playlist, Track
-from typings.youtube import (YouTubeMusicArtist, YouTubeMusicResult,
-                             YouTubeMusicSearch, YouTubeMusicSong,
-                             YouTubePlaylist, YouTubeTrack)
+from typings.youtube import (
+    YouTubeMusicArtist,
+    YouTubeMusicResult,
+    YouTubeMusicSearch,
+    YouTubeMusicSong,
+    YouTubePlaylist,
+    YouTubeTrack,
+)
 
 
 async def query_youtube(
@@ -102,11 +112,8 @@ def youtube_music_search_options(
     if youtube_music_search.top_result:
         options.append(youtube_music_search.top_result)
 
-    for youtube_music_song in youtube_music_search.songs:
-        options.append(youtube_music_song)
-
-    for youtube_music_video in youtube_music_search.videos:
-        options.append(youtube_music_video)
+    options.extend(youtube_music_search.songs)
+    options.extend(youtube_music_search.videos)
 
     options.sort(key=lambda x: youtube_result_score(x, track), reverse=True)
     return options
@@ -120,7 +127,7 @@ async def convert_track_to_youtube_track(
     ] = await tracks_cache.load_cached_tracks_dict()
     cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
 
-    def advance():
+    def advance() -> None:
         return progress.advance(task_id, advance=1)
 
     if track in cached_tracks:
@@ -203,7 +210,8 @@ async def fetch_youtube_tracks(
     return youtube_tracks
 
 
-def remove_artist_from_title(title: str):
+def remove_artist_from_title(title: str) -> str:
+    # sourcery skip: assign-if-exp, reintroduce-else
     dash_index = title.find(" - ")
     if dash_index == -1:
         return title
@@ -238,10 +246,13 @@ def duration_score(real_duration: int, result_duration: int) -> float:
 
 
 def title_score(real_title: str, result_title: str) -> float:
-    def remove_extraneous_data(title: str):
-        return remove_artist_from_title(
-            remove_features_from_title(remove_parens(title))
-        ).strip()
+    # sourcery skip: assign-if-exp, reintroduce-else
+    def remove_extraneous_data(title: str) -> str:
+        title = remove_parens(title)
+        title = remove_features_from_title(title)
+        title = remove_artist_from_title(title)
+        title = title.strip()
+        return title
 
     real_title = remove_extraneous_data(real_title.lower())
     result_title = remove_extraneous_data(result_title.lower())
@@ -256,6 +267,7 @@ def title_score(real_title: str, result_title: str) -> float:
 
 
 def explicit_score(real_is_explicit: bool, result_is_explicit: bool) -> float:
+    # sourcery skip: assign-if-exp, reintroduce-else
     if real_is_explicit == result_is_explicit:
         return 1
     return 0
@@ -282,6 +294,7 @@ def artists_score(
 
 
 def album_score(real_album_name: str | None, result_album_name: str | None) -> float:
+    # sourcery skip: assign-if-exp, reintroduce-else
     if real_album_name is None and result_album_name is None:
         return 0
 

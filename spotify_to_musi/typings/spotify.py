@@ -5,6 +5,16 @@ import typing as t
 from pydantic import BaseModel, validator
 
 
+class SpotifyResponse(t.TypedDict):
+    href: str
+    items: list[t.Any]  # potentially make this a generic in future
+    limit: int
+    next: str | None
+    offset: int
+    previous: str | None
+    total: int
+
+
 class SpotifyImage(BaseModel):
     url: str
     width: int | None
@@ -46,8 +56,8 @@ class SpotifyArtist(BaseModel):
     uri: str
 
     @validator("name")
-    def validate_name(cls, v: str) -> str:
-        if v == "":
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101
+        if not v:
             raise ValueError("Artist name can't be empty")
         return v
 
@@ -69,8 +79,8 @@ class SpotifyAlbum(BaseModel):
     uri: str
 
     @validator("name")
-    def validate_name(cls, v: str) -> str:
-        if v == "":
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101
+        if not v:
             raise ValueError("Album name can't be empty")
         return v
 
@@ -97,17 +107,17 @@ class SpotifyTrack(BaseModel):
     # preview_url: Optional[str]
 
     @validator("name")
-    def validate_name(cls, v: str) -> str:
-        if v == "":
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101
+        if not v:
             raise ValueError("Track name can't be empty")
         return v
 
     @property
-    def duration(self) -> int:
+    def duration(self: SpotifyTrack) -> int:
         return self.duration_ms // 1000
 
     @property
-    def album_name(self) -> str | None:
+    def album_name(self: SpotifyTrack) -> str | None:
         # song is a single and has the 'single' as the album name, i represent this as None internally to help with calucations later
         if (
             self.album.album_type == "single"
@@ -123,11 +133,13 @@ class SpotifyPlaylist(BasicSpotifyPlaylist):
     tracks: list[SpotifyTrack]
 
     @property
-    def cover_image_url(self) -> str | None:
-        if len(self.images) == 0:
+    def cover_image_url(self: SpotifyPlaylist) -> str | None:
+        # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
+        if not self.images:
             return None
+
         return self.images[0].url
 
     @property
-    def track_count(self) -> int:
+    def track_count(self: SpotifyPlaylist) -> int:
         return len(self.tracks)

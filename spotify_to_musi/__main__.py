@@ -15,7 +15,7 @@ from main import transfer_spotify_to_musi
 from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 
-def async_cmd(func: t.Callable):
+def async_cmd(func: t.Callable) -> t.Callable:
     """
     Hack to make click support async commands.
 
@@ -24,7 +24,7 @@ def async_cmd(func: t.Callable):
     """
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
         return asyncio.run(func(*args, **kwargs))
 
     return wrapper
@@ -32,7 +32,7 @@ def async_cmd(func: t.Callable):
 
 @click.group()
 @async_cmd
-async def cli():
+async def cli() -> None:
     pass
 
 
@@ -98,7 +98,7 @@ async def setup() -> None:
         f"Your browser should now open. If not, navigate to [blue underline]{oauth.URL}[/blue underline].\nPlease authorize with Spotify and return once done.\n"
     )
 
-    await oauth.run2()
+    await oauth.run()
 
     try:
         await spotify.init()

@@ -4,6 +4,8 @@ from pydantic import BaseModel, validator
 from pydantic.dataclasses import dataclass
 from typings.core import Artist, Playlist, Track
 
+import typing as t
+
 
 class YouTubeMusicArtist(BaseModel):
     name: str
@@ -26,8 +28,9 @@ class YouTubeMusicSong(_YouTubeMusicResultType):
 
     @validator("album")
     def must_not_be_single(
-        cls, v: YouTubeMusicAlbum, values
+        cls, v: YouTubeMusicAlbum, values: dict[str, t.Any]  # noqa: ANN101
     ) -> YouTubeMusicAlbum | None:
+        # sourcery skip: assign-if-exp, reintroduce-else
         if v.name == values["title"]:
             return None
 
@@ -82,4 +85,4 @@ if __name__ == "__main__":
         cover_image_url="test",
     )
 
-    print(set((youtube_track,)))
+    print({youtube_track})

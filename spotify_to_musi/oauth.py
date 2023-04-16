@@ -40,9 +40,9 @@ client_creds = ClientCreds(
 spotify = AsyncSpotify(client_creds=client_creds)
 
 
-def attach_endpoints(app: sanic.Sanic):
+def attach_endpoints(app: sanic.Sanic) -> None:
     @app.route("/authorize")  # type: ignore
-    async def _authorize(_request: sanic.Request):
+    async def _authorize(_request: sanic.Request) -> sanic.HTTPResponse:
         if spotify.is_oauth_ready:
             return response.redirect(spotify.auth_uri(state=STATE))
 
@@ -57,7 +57,7 @@ def attach_endpoints(app: sanic.Sanic):
     @app.route(
         "/callback/spotify"
     )  # REGISTER THIS ROUTE AS REDIRECT URI IN SPOTIFY DEV CONSOLE
-    async def _spotify_callback(request: sanic.Request):
+    async def _spotify_callback(request: sanic.Request) -> sanic.HTTPResponse:
         error = request.args.get("error")
         code = request.args.get("code")
 
@@ -86,7 +86,7 @@ def attach_endpoints(app: sanic.Sanic):
 
         await spotify.populate_user_creds()
 
-        async def stop_server():
+        async def stop_server() -> None:
             await asyncio.sleep(3)
             app.stop()
 
@@ -157,7 +157,7 @@ def create_app(app_name: str) -> sanic.Sanic:
     return app
 
 
-async def run2():
+async def run() -> None:
     webbrowser.open_new_tab(URL)
 
     app_name = "Spotify-OAuth"
@@ -168,4 +168,4 @@ async def run2():
 
 
 if __name__ == "__main__":
-    asyncio.run(run2())
+    asyncio.run(run())

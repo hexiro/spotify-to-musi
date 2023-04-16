@@ -8,13 +8,18 @@ import aiofiles
 import pydantic
 import pyfy.excs
 import rich
-from commons import (SPOTIFY_ID_REGEX, loaded_message, skipping_message,
-                     task_description)
+
+from commons import SPOTIFY_ID_REGEX, loaded_message, skipping_message, task_description
 from paths import SPOTIFY_CREDENTIALS_PATH
 from pyfy import AsyncSpotify, ClientCreds
 from rich.progress import Progress, TaskID
 from typings.core import Artist, Playlist, Track
-from typings.spotify import BasicSpotifyPlaylist, SpotifyPlaylist, SpotifyTrack
+from typings.spotify import (
+    BasicSpotifyPlaylist,
+    SpotifyPlaylist,
+    SpotifyTrack,
+    SpotifyResponse,
+)
 
 client_id = os.environ["SPOTIFY_CLIENT_ID"]
 client_secret = os.environ["SPOTIFY_CLIENT_SECRET"]
@@ -117,9 +122,9 @@ async def fetch_basic_user_spotify_playlists(
     progress.update(task_id, total=total, completed=0)
     progress.start_task(task_id)
 
-    async def load_user_playlists(offset: int, limit: int):
+    async def load_user_playlists(offset: int, limit: int) -> SpotifyResponse:
         try:
-            return await spotify.user_playlists(offset=offset, limit=limit)
+            return await spotify.user_playlists(offset=offset, limit=limit)  # type: ignore
         finally:
             progress.update(task_id, advance=1)
 
@@ -257,11 +262,11 @@ async def load_basic_playlist_tracks(
 
     spotify_tracks_items_tasks: list[asyncio.Task[list[dict]]] = []
 
-    async def load_playlist_tracks(offset: int, limit: int):
+    async def load_playlist_tracks(offset: int, limit: int) -> SpotifyResponse:
         try:
             return await spotify.playlist_tracks(
                 playlist_id=basic_spotify_playlist.id, offset=offset, limit=limit
-            )
+            )  # type: ignore
         finally:
             progress.update(task_id, advance=1)
 
@@ -329,9 +334,9 @@ async def fetch_spotify_user_liked_tracks(
     progress.update(task_id, total=total, completed=0)
     progress.start_task(task_id)
 
-    async def load_user_tracks(offset: int, limit: int):
+    async def load_user_tracks(offset: int, limit: int) -> SpotifyResponse:
         try:
-            return await spotify.user_tracks(offset=offset, limit=limit)
+            return await spotify.user_tracks(offset=offset, limit=limit)  # type: ignore
         finally:
             progress.update(task_id, advance=1)
 
@@ -393,7 +398,7 @@ def covert_spotify_tracks_to_tracks(
 
 if __name__ == "__main__":
 
-    async def main():
+    async def main() -> None:
         with Progress() as progress:
             playlists, liked_tracks = await query_spotify(False, [], progress)
 

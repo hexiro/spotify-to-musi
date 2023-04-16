@@ -24,7 +24,7 @@ def loaded_message(
     color: str,
     name: str | None = None,
     tracks_count: int | None = None,
-):
+) -> str:
     msg = f"[bold {color}]{source.upper()}:[/bold {color}] Loaded {loaded} "
 
     tracks_parens = ("(", ")")

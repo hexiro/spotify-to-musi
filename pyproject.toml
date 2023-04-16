@@ -59,4 +59,8 @@ line-length = 88
 target-version = ["py38"]
 
 [tool.ruff]
-ignore = ["E501"]  # let black handle line length
+ignore = [
+    "E501",  # let black handle line length
+    "ANN401"  # if everything is going to be typed, some things have to be any
+]  
+select = ["ANN"]
