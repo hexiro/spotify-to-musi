@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing as t
 
+from exceptions import BlankNameError
 from pydantic import BaseModel, validator
 
 
@@ -58,7 +59,7 @@ class SpotifyArtist(BaseModel):
     @validator("name")
     def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
         if not v:
-            raise ValueError("Artist name can't be empty")
+            raise BlankNameError("artist")
         return v
 
 
@@ -81,7 +82,7 @@ class SpotifyAlbum(BaseModel):
     @validator("name")
     def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
         if not v:
-            raise ValueError("Album name can't be empty")
+            raise BlankNameError("album")
         return v
 
 
@@ -109,7 +110,7 @@ class SpotifyTrack(BaseModel):
     @validator("name")
     def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
         if not v:
-            raise ValueError("Track name can't be empty")
+            raise BlankNameError("track")
         return v
 
     @property
@@ -118,7 +119,8 @@ class SpotifyTrack(BaseModel):
 
     @property
     def album_name(self: SpotifyTrack) -> str | None:
-        # song is a single and has the 'single' as the album name, i represent this as None internally to help with calucations later
+        # song is a single and has the single name as the album name,
+        # represent this as None internally because it's not really an album
         if (
             self.album.album_type == "single"
             or self.album.album_group == "single"

@@ -3,6 +3,8 @@ from __future__ import annotations
 import pathlib
 import sys
 
+from exceptions import UnsupportedPlatformError
+
 
 def _app_data() -> pathlib.Path:
     """
@@ -23,7 +25,7 @@ def _app_data() -> pathlib.Path:
         return home / ".local/share"
     elif sys.platform == "darwin":
         return home / "Library/Application Support"
-    raise RuntimeError("Unsupported platform")
+    raise UnsupportedPlatformError(sys.platform)
 
 
 APP_DATA = _app_data()

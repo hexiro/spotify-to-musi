@@ -4,12 +4,8 @@ import contextlib
 import time
 import typing as t
 
-from typings.youtube import (
-    YouTubeMusicResult,
-    YouTubeMusicSearch,
-    YouTubeMusicSong,
-    YouTubeMusicVideo,
-)
+from typings.youtube import (YouTubeMusicResult, YouTubeMusicSearch,
+                             YouTubeMusicSong, YouTubeMusicVideo)
 
 if t.TYPE_CHECKING:
     import httpx

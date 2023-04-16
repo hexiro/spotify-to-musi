@@ -3,12 +3,13 @@ from __future__ import annotations
 from dataclasses import field
 
 from commons import remove_features_from_title, remove_parens
+from exceptions import EmptyTupleError
 from pydantic.dataclasses import dataclass
 
 
-def validate_tuple_isnt_empty(value: tuple) -> tuple:
+def validate_tuple_isnt_empty(name: str, value: tuple) -> tuple:
     if not value:
-        raise ValueError("Tuple can't be empty")
+        raise EmptyTupleError(name)
     return value
 
 
@@ -27,7 +28,7 @@ class Track:
     is_explicit: bool = field(compare=False)
 
     def __post_init__(self: Track) -> None:
-        validate_tuple_isnt_empty(self.artists)
+        validate_tuple_isnt_empty("artists", self.artists)
 
     @property
     def primary_artist(self: Track) -> Artist:

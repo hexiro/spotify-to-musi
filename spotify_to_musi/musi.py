@@ -9,20 +9,12 @@ import httpx
 import pydantic.error_wrappers
 import pydantic.json
 import rich
-from typings.musi import (
-    MusiLibrary,
-    MusiLibraryDict,
-    MusiPlaylist,
-    MusiPlaylistDict,
-    MusiResponse,
-    MusiTrack,
-    MusiVideo,
-    MusiVideoDict,
-)
+from typings.musi import (MusiLibrary, MusiLibraryDict, MusiPlaylist,
+                          MusiPlaylistDict, MusiResponse, MusiTrack, MusiVideo,
+                          MusiVideoDict)
 
 if t.TYPE_CHECKING:
     from typings.youtube import YouTubePlaylist, YouTubeTrack
-
 
 
 def convert_from_youtube(
@@ -96,7 +88,9 @@ def generate_musi_uuid(musi_videos: list[MusiVideo]) -> uuid.UUID:
     )
     musi_videos_json_bytes = musi_videos_json.encode("utf-8")
 
-    md5_hash = hashlib.md5(musi_videos_json_bytes)
+    # md5 is not a very secure hash function,
+    # but it's not hashing sensitive data here, so it's okay.
+    md5_hash = hashlib.md5(musi_videos_json_bytes)  # noqa: S324
     md5_hash_hexdigest = md5_hash.hexdigest()
 
     return uuid.uuid3(uuid.NAMESPACE_OID, md5_hash_hexdigest)

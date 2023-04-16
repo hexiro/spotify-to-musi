@@ -98,10 +98,10 @@ def attach_endpoints(app: sanic.Sanic) -> None:
 
 
 def create_app(app_name: str) -> sanic.Sanic:
-    log_config = dict(  # no cov
-        version=1,
-        disable_existing_loggers=False,
-        loggers={
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "loggers": {
             "sanic.root": {"level": "ERROR", "handlers": ["console"]},
             "sanic.error": {
                 "level": "ERROR",
@@ -122,7 +122,7 @@ def create_app(app_name: str) -> sanic.Sanic:
                 "qualname": "sanic.server",
             },
         },
-        handlers={
+        "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
                 "formatter": "generic",
@@ -139,7 +139,7 @@ def create_app(app_name: str) -> sanic.Sanic:
                 "stream": sys.stdout,
             },
         },
-        formatters={
+        "formatters": {
             "generic": {
                 "format": "%(asctime)s [%(process)s] [%(levelname)s] %(message)s",
                 "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
@@ -152,7 +152,7 @@ def create_app(app_name: str) -> sanic.Sanic:
                 "class": "logging.Formatter",
             },
         },
-    )
+    }
 
     app = sanic.Sanic(app_name, log_config=log_config)
     attach_endpoints(app)

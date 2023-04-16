@@ -10,18 +10,14 @@ import aiofiles
 import pydantic
 import pyfy.excs
 import rich
-
-from commons import SPOTIFY_ID_REGEX, loaded_message, skipping_message, task_description
+from commons import (SPOTIFY_ID_REGEX, loaded_message, skipping_message,
+                     task_description)
 from paths import SPOTIFY_CREDENTIALS_PATH
 from pyfy import AsyncSpotify, ClientCreds
 from rich.progress import Progress, TaskID
 from typings.core import Artist, Playlist, Track
-from typings.spotify import (
-    BasicSpotifyPlaylist,
-    SpotifyPlaylist,
-    SpotifyTrack,
-    SpotifyResponse,
-)
+from typings.spotify import (BasicSpotifyPlaylist, SpotifyPlaylist,
+                             SpotifyResponse, SpotifyTrack)
 
 client_id = os.environ["SPOTIFY_CLIENT_ID"]
 client_secret = os.environ["SPOTIFY_CLIENT_SECRET"]

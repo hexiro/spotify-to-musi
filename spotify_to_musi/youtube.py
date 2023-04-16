@@ -7,23 +7,12 @@ import httpx
 import rich
 import tracks_cache
 import ytmusic
-from commons import (
-    loaded_message,
-    remove_features_from_title,
-    remove_parens,
-    skipping_message,
-    task_description,
-)
-
+from commons import (loaded_message, remove_features_from_title, remove_parens,
+                     skipping_message, task_description)
 from typings.core import Artist, Playlist, Track
-from typings.youtube import (
-    YouTubeMusicArtist,
-    YouTubeMusicResult,
-    YouTubeMusicSearch,
-    YouTubeMusicSong,
-    YouTubePlaylist,
-    YouTubeTrack,
-)
+from typings.youtube import (YouTubeMusicArtist, YouTubeMusicResult,
+                             YouTubeMusicSearch, YouTubeMusicSong,
+                             YouTubePlaylist, YouTubeTrack)
 
 if t.TYPE_CHECKING:
     from rich.progress import Progress, TaskID

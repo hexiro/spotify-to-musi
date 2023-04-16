@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import typing as t
+
 import httpx
 import pytest
 import rich
-
-import typing as t
 
 from spotify_to_musi import ytmusic
 from spotify_to_musi.typings.core import Artist, Track

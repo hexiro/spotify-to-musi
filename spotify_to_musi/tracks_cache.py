@@ -97,7 +97,9 @@ async def update_cached_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> None
 
 async def match_tracks_to_youtube_tracks(
     tracks: t.Iterable[Track],
-) -> tuple[YouTubeTrack, ...]:  # sourcery skip: for-append-to-extend, list-comprehension
+) -> tuple[
+    YouTubeTrack, ...
+]:  # sourcery skip: for-append-to-extend, list-comprehension
     """
     Match the tracks to the cached YouTube tracks.
     """

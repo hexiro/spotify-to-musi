@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import typing as t
 from dataclasses import field
 
 from pydantic import BaseModel, validator
 from pydantic.dataclasses import dataclass
 from typings.core import Artist, Playlist, Track
-
-import typing as t
 
 
 class YouTubeMusicArtist(BaseModel):
