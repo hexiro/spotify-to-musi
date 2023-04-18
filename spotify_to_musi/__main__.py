@@ -2,16 +2,22 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
+import os
 import typing as t
 
+import main
 import oauth
 import pyfy.excs
 import rich
 import rich_click as click
 import spotify
-from main import transfer_spotify_to_musi
+from rich.prompt import Prompt
 
+from spotify_to_musi.commons import (load_spotify_credentials,
+                                     spotify_client_credentials,
+                                     spotify_client_credentials_from_file)
 from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 
@@ -74,7 +80,7 @@ async def transfer(user: bool, playlist: list[str]) -> None:
         )
         return
 
-    await transfer_spotify_to_musi(
+    await main.transfer_spotify_to_musi(
         transfer_user_library=user, extra_playlist_urls=playlist
     )
 
@@ -86,24 +92,43 @@ async def setup() -> None:
     Configure Spotify w/ OAuth.
     """
     spotify_to_musi_text = "[bold][green]Spotify[/green][reset]-to-[/reset][dark_orange3]Musi[/dark_orange3][/bold]"
-    welcome_text = f"{spotify_to_musi_text} first time setup! [i grey53](Ctrl + C to exit)[/i grey53]"
+    welcome_text = f"{spotify_to_musi_text} first time setup! [i grey53](Ctrl + C to exit)[/i grey53]\n"
 
-    if SPOTIFY_CREDENTIALS_PATH.is_file():
-        welcome_text += "\n[grey53]* Your secrets are already set! Only run this script if you need to authorize with Spotify again.[/grey53]"
+    client_id: str | None = None
+    client_secret: str | None = None
 
-    welcome_text += "\n"
+    spotify_client_creds = await spotify_client_credentials()
+    if spotify_client_creds:
+        client_id, client_secret = spotify_client_creds
+
+    if client_id and client_secret:
+        welcome_text += "[grey53]* Your secrets are already set! Only run this script if you need to authorize with Spotify again.[/grey53]\n"
+
     rich.print(welcome_text)
 
+    def style_prompt(prompt: str) -> str:
+        return f"[bold white]{prompt}[/bold white][grey53]"
+
+    spotify_client_id: str = Prompt.ask(
+        style_prompt("Spotify Client ID"), default=client_id
+    )  # type: ignore
+    spotify_client_secret: str = Prompt.ask(
+        style_prompt("Spotify Client Secret"), default=client_secret
+    )  # type: ignore
+
     rich.print(
-        f"Your browser should now open. If not, navigate to [blue underline]{oauth.URL}[/blue underline].\nPlease authorize with Spotify and return once done.\n"
+        f"\nPlease open your browser and navigate to [blue underline]{oauth.URL}[/blue underline].\nAuthorize with Spotify and return once done.\n"
     )
 
-    await oauth.run()
+    await oauth.run(
+        spotify_client_id=spotify_client_id,
+        spotify_client_secret=spotify_client_secret,
+    )
 
     try:
         await spotify.init()
         await spotify.spotify.me()
-    except pyfy.excs.SpotifyError:  # spotipy.oauth2.SpotifyOauthError
+    except pyfy.excs.SpotifyError:
         SPOTIFY_CREDENTIALS_PATH.unlink()
         rich.print(
             "[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]"

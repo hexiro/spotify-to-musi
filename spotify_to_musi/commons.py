@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+import contextlib
+import json
+import os
 import re
+import typing as t
+
+import aiofiles
+
+from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 # https://regex101.com/r/r4mp7V/1
 # works on tracks and playlists
@@ -40,10 +48,54 @@ def loaded_message(
     return msg
 
 
-def skipping_message(text: str, reason: str) -> str:
+def skipping_message(*, text: str, reason: str) -> str:
     return (
         f"[bold yellow1]SKIPPING:[/bold yellow1] {text} [yellow1][{reason}][/yellow1]"
     )
+
+
+async def load_spotify_credentials() -> dict[str, t.Any] | None:
+    if not SPOTIFY_CREDENTIALS_PATH.is_file():
+        return None
+
+    async with aiofiles.open(SPOTIFY_CREDENTIALS_PATH, "r") as file:
+        spotify_creds_text = await file.read()
+
+    return json.loads(spotify_creds_text)
+
+
+def spotify_client_credentials_from_file(
+    spotify_creds_json: dict[str, t.Any]
+) -> tuple[str, str] | None:
+    def dict_or_env_value(
+        data: dict[str, t.Any], key: str, env_variable: str | None = None
+    ) -> str | None:
+        """
+        Gets a value from a provided dictionary or the system's environment variables.
+        """
+        with contextlib.suppress(KeyError):
+            return data[key]
+        with contextlib.suppress(KeyError):
+            return os.environ[env_variable or key]
+        return None
+
+    client_id = dict_or_env_value(spotify_creds_json, "client_id", "SPOTIFY_CLIENT_ID")
+    client_secret = dict_or_env_value(
+        spotify_creds_json, "client_secret", "SPOTIFY_CLIENT_SECRET"
+    )
+
+    if not client_id or not client_secret:
+        return None
+
+    return client_id, client_secret
+
+
+async def spotify_client_credentials() -> tuple[str, str] | None:
+    # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
+    spotify_creds_json = await load_spotify_credentials()
+    if not spotify_creds_json:
+        return None
+    return spotify_client_credentials_from_file(spotify_creds_json)
 
 
 def remove_parens(title: str) -> str:

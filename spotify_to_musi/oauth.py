@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import functools
 import json
-import os
 import sys
+import typing as t
 import uuid
-import webbrowser
 
 import aiofiles
 import sanic
@@ -78,24 +76,12 @@ LOG_CONFIG = {
 }
 
 
-client_id = os.environ["SPOTIFY_CLIENT_ID"]
-client_secret = os.environ["SPOTIFY_CLIENT_SECRET"]
-
-client_creds = ClientCreds(
-    client_id=client_id,
-    client_secret=client_secret,
-    redirect_uri="http://localhost:5000/callback/spotify",
-    scopes=[
-        "user-library-read",
-        "playlist-read-collaborative",
-        "playlist-read-private",
-    ],
-)
-
-spotify = AsyncSpotify(client_creds=client_creds)
-
-
-def attach_endpoints(app: sanic.Sanic) -> None:
+def attach_endpoints(
+    app: sanic.Sanic,
+    spotify: AsyncSpotify,
+    spotify_client_id: str,
+    spotify_client_secret: str,
+) -> None:
     @app.route("/authorize")  # type: ignore
     async def _authorize(_request: sanic.Request) -> sanic.HTTPResponse:
         if spotify.is_oauth_ready:
@@ -127,7 +113,7 @@ def attach_endpoints(app: sanic.Sanic) -> None:
         if callback_state != STATE:
             raise SanicException(status_code=401)
         try:
-            user_creds_json = await spotify._request_user_creds(grant=code)
+            user_creds_json: dict[str, t.Any] = await spotify._request_user_creds(grant=code)  # type: ignore
         except AuthError as exc:
             error_code: int = exc.code  # type: ignore
             body = {"error_description": exc.msg, "error_code": error_code}
@@ -135,6 +121,9 @@ def attach_endpoints(app: sanic.Sanic) -> None:
 
         user_creds_model = spotify._user_json_to_object(user_creds_json)
         spotify.user_creds = user_creds_model
+
+        user_creds_json["client_id"] = spotify_client_id
+        user_creds_json["client_secret"] = spotify_client_secret
 
         async with aiofiles.open(SPOTIFY_CREDENTIALS_PATH, "w") as file:
             await file.write(json.dumps(user_creds_json))
@@ -147,21 +136,37 @@ def attach_endpoints(app: sanic.Sanic) -> None:
             app.stop()
 
 
-def create_app(app_name: str) -> sanic.Sanic:
+def create_app(
+    app_name: str, spotify_client_id: str, spotify_client_secret: str
+) -> sanic.Sanic:
+    client_creds = ClientCreds(
+        client_id=spotify_client_id,
+        client_secret=spotify_client_secret,
+        redirect_uri="http://localhost:5000/callback/spotify",
+        scopes=[
+            "user-library-read",
+            "playlist-read-collaborative",
+            "playlist-read-private",
+        ],
+    )
+
+    spotify = AsyncSpotify(client_creds=client_creds)
+
     app = sanic.Sanic(app_name, log_config=LOG_CONFIG)
-    attach_endpoints(app)
+    attach_endpoints(app, spotify, spotify_client_id, spotify_client_secret)
     return app
 
 
-async def run() -> None:
-    webbrowser.open_new_tab(URL)
-
+async def run(*, spotify_client_id: str, spotify_client_secret: str) -> None:
     app_name = "Spotify-OAuth"
-    loader = AppLoader(factory=functools.partial(create_app, app_name))
+    loader = AppLoader(
+        factory=functools.partial(
+            create_app,
+            app_name,
+            spotify_client_id,
+            spotify_client_secret,
+        )
+    )
     app = loader.load()
     app.prepare(port=PORT, motd=False, access_log=False)
     sanic.Sanic.serve(primary=app, app_loader=loader)
-
-
-if __name__ == "__main__":
-    asyncio.run(run())

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import math
-import os
 import typing as t
 
 import aiofiles
@@ -12,19 +11,16 @@ import pyfy.excs
 import rich
 from commons import (SPOTIFY_ID_REGEX, loaded_message, skipping_message,
                      task_description)
-from paths import SPOTIFY_CREDENTIALS_PATH
 from pyfy import AsyncSpotify, ClientCreds
 from rich.progress import Progress, TaskID
 from typings.core import Artist, Playlist, Track
 from typings.spotify import (BasicSpotifyPlaylist, SpotifyPlaylist,
                              SpotifyResponse, SpotifyTrack)
 
-client_id = os.environ["SPOTIFY_CLIENT_ID"]
-client_secret = os.environ["SPOTIFY_CLIENT_SECRET"]
+from spotify_to_musi.commons import (load_spotify_credentials,
+                                     spotify_client_credentials_from_file)
 
 client_creds = ClientCreds(
-    client_id=client_id,
-    client_secret=client_secret,
     redirect_uri="http://localhost:5000/callback/spotify",
     scopes=[
         "user-library-read",
@@ -40,15 +36,22 @@ async def init() -> None:
     if spotify.user_creds:
         return
 
-    if not SPOTIFY_CREDENTIALS_PATH.is_file():
+    spotify_creds = await load_spotify_credentials()
+
+    if not spotify_creds:
         return
 
-    async with aiofiles.open(SPOTIFY_CREDENTIALS_PATH, "r") as file:
-        spotify_creds_text = await file.read()
+    spotify_client_creds = spotify_client_credentials_from_file(spotify_creds)
 
-    spotify_creds_json = json.loads(spotify_creds_text)
-    user_creds = spotify._user_json_to_object(spotify_creds_json)
+    if not spotify_client_creds:
+        return
 
+    client_id, client_secret = spotify_client_creds
+
+    spotify.client_creds.client_id = client_id
+    spotify.client_creds.client_secret = client_secret
+
+    user_creds = spotify._user_json_to_object(spotify_creds)
     spotify.user_creds = user_creds
 
     await spotify.populate_user_creds()
