@@ -43,10 +43,10 @@ class BasicSpotifyPlaylist(BaseModel):
     description: str
     href: str
     uri: str
-    # type: t.Literal['playlist']  noqa: ERA001
-    # owner: SpotifyPlaylistOwner  noqa: ERA001
     images: list[SpotifyImage]
     tracks: SpotifyBasicTracks
+    # 'owner': SpotifyPlaylistOwner  noqa: ERA001
+    # 'type': Literalplaylist noqa: ERA001
 
 
 class SpotifyArtist(BaseModel):
@@ -97,15 +97,15 @@ class SpotifyTrack(BaseModel):
     explicit: bool
     is_local: bool = False
     artists: list[SpotifyArtist]
-    # available_markets: Union[List, List[str]]   noqa: ERA001
-    # track_number: int  noqa: ERA001
-    # type: t.Literal['track']  noqa: ERA001
-    # uri: str  noqa: ERA001
+    # 'available_markets': Union[List, List[str]]   noqa: ERA001
+    # 'track_number': int  noqa: ERA001
+    # 'type': t.Literal['track']  noqa: ERA001
+    # 'uri': str  noqa: ERA001
     album: SpotifyAlbum
-    # disc_number: int  noqa: ERA001
-    # external_ids: ExternalIds  noqa: ERA001
-    # external_urls: ExternalUrls  noqa: ERA001
-    # preview_url: Optional[str]  noqa: ERA001
+    # 'disc_number': int  noqa: ERA001
+    # 'external_ids': ExternalIds  noqa: ERA001
+    # 'external_urls': ExternalUrls  noqa: ERA001
+    # 'preview_url': Optional[str]  noqa: ERA001
 
     @validator("name")
     def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
@@ -132,7 +132,7 @@ class SpotifyTrack(BaseModel):
 
 
 class SpotifyPlaylist(BasicSpotifyPlaylist):
-    tracks: list[SpotifyTrack]
+    tracks: list[SpotifyTrack]  # type: ignore[assignment]
 
     @property
     def cover_image_url(self: SpotifyPlaylist) -> str | None:

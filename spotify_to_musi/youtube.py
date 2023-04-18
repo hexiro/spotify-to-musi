@@ -196,9 +196,11 @@ async def fetch_youtube_tracks(
             task = asyncio.create_task(coro)
             youtube_tracks_tasks.append(task)
 
-        youtube_tracks: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)  # type: ignore
+        youtube_tracks_or_null: list[YouTubeTrack | None] = await asyncio.gather(
+            *youtube_tracks_tasks
+        )
         youtube_tracks: tuple[YouTubeTrack, ...] = tuple(
-            x for x in youtube_tracks if x is not None
+            x for x in youtube_tracks_or_null if x is not None
         )
 
     return youtube_tracks
@@ -214,7 +216,7 @@ def remove_artist_from_title(title: str) -> str:
 
 
 def youtube_result_score(youtube_result: YouTubeMusicResult, track: Track) -> float:
-    score = 0
+    score: float = 0
     score += title_score(track.name, youtube_result.title)
     score += artists_score(track.artists, youtube_result.artists)
     score += duration_score(track.duration, youtube_result.duration)
@@ -289,10 +291,9 @@ def artists_score(
 
 def album_score(real_album_name: str | None, result_album_name: str | None) -> float:
     # sourcery skip: assign-if-exp, reintroduce-else
-    if real_album_name is None and result_album_name is None:
+    if real_album_name is None:
         return 0
-
-    if real_album_name is None or result_album_name is None:
+    if result_album_name is None:
         return 0
 
     real_album_name = remove_parens(real_album_name.lower())
@@ -300,8 +301,8 @@ def album_score(real_album_name: str | None, result_album_name: str | None) -> f
 
     if real_album_name == result_album_name:
         return 1
-    if real_album_name in result_album_name:
+    if real_album_name in result_album_name:  # type: ignore[operator]
         return 0.75
-    if result_album_name in real_album_name:
+    if result_album_name in real_album_name:  # type: ignore[operator]
         return 0.75
     return 0

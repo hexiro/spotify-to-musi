@@ -61,7 +61,7 @@ class MusiPlaylist(BaseModel):
     ot: t.Literal["custom"] = Field(default="custom", const=True)
     type: t.Literal["user"] = Field(default="user", const=True)
 
-    def dict(self: MusiPlaylist, **kwargs: t.Any) -> MusiPlaylistDict:
+    def dict(self: MusiPlaylist, **kwargs: t.Any) -> MusiPlaylistDict:  # type: ignore[override]
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
         super_dict = super().dict(**kwargs)
         data = {
@@ -89,7 +89,7 @@ class MusiLibrary(BaseModel):
     name: t.Literal["My Library"] = Field(default="My Library", const=True)
     date: int = Field(default_factory=lambda: int(time.time()))
 
-    def dict(self: MusiLibrary, **kwargs: t.Any) -> MusiLibraryDict:
+    def dict(self: MusiLibrary, **kwargs: t.Any) -> MusiLibraryDict:  # type: ignore[override]
         items: list[MusiItemDict] = [track.musi_item(index).dict() for index, track in enumerate(self.tracks)]  # type: ignore
         super_dict = super().dict(**kwargs)
         return {

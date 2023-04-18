@@ -155,10 +155,14 @@ async def fetch_basic_spotify_playlists(
         task = asyncio.create_task(coro)
         tasks.append(task)
 
-    spotify_basic_playlists: list[BasicSpotifyPlaylist | None] = await asyncio.gather(*tasks)  # type: ignore
+    spotify_basic_playlists_or_null: list[
+        BasicSpotifyPlaylist | None
+    ] = await asyncio.gather(*tasks)
+
     spotify_basic_playlists: list[BasicSpotifyPlaylist] = [
-        p for p in spotify_basic_playlists if p is not None
+        p for p in spotify_basic_playlists_or_null if p is not None
     ]
+
     return spotify_basic_playlists
 
 
