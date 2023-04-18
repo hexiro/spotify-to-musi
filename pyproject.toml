@@ -26,8 +26,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-rich = "^12.5.1"
-rich-click = "^1.5.1"
+rich = "^13.3.4"
+rich-click = "^1.6.1"
 aiofiles = "^23.1.0"
 httpx = "^0.24.0"
 pydantic = "^1.10.7"
