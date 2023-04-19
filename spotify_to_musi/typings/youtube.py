@@ -57,7 +57,7 @@ class YouTubeTrack(Track):
     youtube_name: str
     youtube_duration: int
     youtube_artists: tuple[Artist, ...]
-    is_explicit: t.Optional[bool]
+    is_explicit: t.Optional[bool]  # type: ignore[assignment]
     video_id: str
 
 

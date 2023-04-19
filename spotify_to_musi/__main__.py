@@ -82,14 +82,14 @@ async def setup() -> None:
     spotify_to_musi_text = "[bold][green]Spotify[/green][reset]-to-[/reset][dark_orange3]Musi[/dark_orange3][/bold]"
     welcome_text = f"{spotify_to_musi_text} first time setup! [i grey53](Ctrl + C to exit)[/i grey53]\n"
 
-    client_id: str | None = None
-    client_secret: str | None = None
+    stored_client_id: str | None = None
+    stored_client_secret: str | None = None
 
     spotify_client_creds = await spotify_client_credentials()
     if spotify_client_creds:
-        client_id, client_secret = spotify_client_creds
+        stored_client_id, stored_client_secret = spotify_client_creds
 
-    if client_id and client_secret:
+    if stored_client_id and stored_client_secret:
         welcome_text += "[grey53]* Your secrets are already set! Only run this script if you need to authorize with Spotify again.[/grey53]\n"
 
     rich.print(welcome_text)
@@ -97,10 +97,13 @@ async def setup() -> None:
     def style_prompt(prompt: str) -> str:
         return f"[bold white]{prompt}[/bold white][grey53]"
 
-    spotify_client_id: str = Prompt.ask(style_prompt("Spotify Client ID"), default=client_id)  # type: ignore
-    spotify_client_secret: str = Prompt.ask(
-        style_prompt("Spotify Client Secret"), default=client_secret
-    )  # type: ignore
+    spotify_client_id: str | None = None
+    spotify_client_secret: str | None = None
+
+    while not spotify_client_id:
+        spotify_client_id = Prompt.ask(style_prompt("Spotify Client ID"), default=stored_client_id)
+    while not spotify_client_secret:
+        spotify_client_secret = Prompt.ask(style_prompt("Spotify Client Secret"), default=stored_client_secret)
 
     rich.print(
         f"\nPlease open your browser and navigate to [blue underline]{oauth.URL}[/blue underline].\nAuthorize with Spotify and return once done.\n"

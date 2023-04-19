@@ -8,7 +8,6 @@ import pydantic
 import pyfy.excs
 import rich
 from pyfy import AsyncSpotify, ClientCreds
-from rich.progress import Progress, TaskID
 
 from spotify_to_musi.commons import (SPOTIFY_ID_REGEX,
                                      load_spotify_credentials, loaded_message,
@@ -19,6 +18,10 @@ from spotify_to_musi.typings.core import Artist, Playlist, Track
 from spotify_to_musi.typings.spotify import (BasicSpotifyPlaylist,
                                              SpotifyPlaylist, SpotifyResponse,
                                              SpotifyTrack)
+
+if t.TYPE_CHECKING:
+    from rich.progress import Progress, TaskID
+
 
 client_creds = ClientCreds(
     redirect_uri="http://localhost:5000/callback/spotify",
