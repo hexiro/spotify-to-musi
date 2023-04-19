@@ -5,7 +5,8 @@ from dataclasses import field
 
 from pydantic import BaseModel, validator
 from pydantic.dataclasses import dataclass
-from typings.core import Artist, Playlist, Track
+
+from spotify_to_musi.typings.core import Artist, Playlist, Track
 
 
 class YouTubeMusicArtist(BaseModel):

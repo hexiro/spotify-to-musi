@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import typing as t
 
-from exceptions import BlankNameError
 from pydantic import BaseModel, validator
+
+from spotify_to_musi.exceptions import BlankNameError
 
 
 class SpotifyResponse(t.TypedDict):

@@ -8,9 +8,10 @@ import pydantic
 import pydantic.errors
 import pydantic.json
 from cache import AsyncLRU
-from paths import YOUTUBE_DATA_CACHE_PATH
-from typings.core import Artist, Track
-from typings.youtube import YouTubeTrack
+
+from spotify_to_musi.paths import YOUTUBE_DATA_CACHE_PATH
+from spotify_to_musi.typings.core import Artist, Track
+from spotify_to_musi.typings.youtube import YouTubeTrack
 
 
 def convert_youtube_track_to_track(youtube_track: YouTubeTrack) -> Track:

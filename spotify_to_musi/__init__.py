@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import pathlib
-import sys
 import warnings
 
 import rich.traceback
 
 rich.traceback.install()
-sys.path.append(str(pathlib.Path(__file__).parent))
 
 
 # requests is installed as a sub-dependency of pyfy (& maybe more packages that are sync and async)

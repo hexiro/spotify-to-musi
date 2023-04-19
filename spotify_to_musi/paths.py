@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 import sys
 
-from exceptions import UnsupportedPlatformError
+from spotify_to_musi.exceptions import UnsupportedPlatformError
 
 
 def _app_data() -> pathlib.Path:

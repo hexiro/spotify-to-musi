@@ -9,10 +9,11 @@ import uuid
 import aiofiles
 import sanic
 import sanic.response
-from paths import SPOTIFY_CREDENTIALS_PATH
 from pyfy import AsyncSpotify, AuthError, ClientCreds
 from sanic import SanicException, response
 from sanic.worker.loader import AppLoader
+
+from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 ADDRESS = "localhost"
 PORT = 5000

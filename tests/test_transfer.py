@@ -95,7 +95,10 @@ async def test_transfer(track: Track, expected_video_ids: list[str]) -> None:
     options: list[YouTubeMusicResult] = []
 
     async with httpx.AsyncClient() as client:
-        youtube_music_search = await ytmusic.search_music(track.query, client)
+        try:
+            youtube_music_search = await ytmusic.search_music(track.query, client)
+        except httpx.RequestError:
+            pytest.skip(reason="Failed to connect.")
 
     assert youtube_music_search is not None
 

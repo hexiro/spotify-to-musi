@@ -2,22 +2,16 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import functools
-import os
 import typing as t
 
-import main
-import oauth
 import pyfy.excs
 import rich
 import rich_click as click
-import spotify
 from rich.prompt import Prompt
 
-from spotify_to_musi.commons import (load_spotify_credentials,
-                                     spotify_client_credentials,
-                                     spotify_client_credentials_from_file)
+from spotify_to_musi import main, oauth, spotify
+from spotify_to_musi.commons import spotify_client_credentials
 from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 

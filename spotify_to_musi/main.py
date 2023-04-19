@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import asyncio
-
-import musi
 import rich
-import spotify
-import youtube
 from rich.progress import Progress
+
+from spotify_to_musi import musi, spotify, youtube
 
 
 async def transfer_spotify_to_musi(*, transfer_user_library: bool, extra_playlist_urls: list[str]) -> None:

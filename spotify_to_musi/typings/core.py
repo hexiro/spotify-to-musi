@@ -3,9 +3,10 @@ from __future__ import annotations
 import typing as t
 from dataclasses import field
 
-from commons import remove_features_from_title, remove_parens
-from exceptions import EmptyTupleError
 from pydantic.dataclasses import dataclass
+
+from spotify_to_musi.commons import remove_features_from_title, remove_parens
+from spotify_to_musi.exceptions import EmptyTupleError
 
 
 def validate_tuple_isnt_empty(name: str, value: tuple) -> tuple:
