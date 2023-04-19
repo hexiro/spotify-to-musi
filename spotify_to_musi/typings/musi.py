@@ -56,7 +56,7 @@ class MusiPlaylistDict(t.TypedDict):
 class MusiPlaylist(BaseModel):
     name: str
     tracks: tuple[MusiTrack, ...] = Field(exclude=True)
-    ciu: str | None = Field(alias="cover_image_url")
+    ciu: t.Optional[str] = Field(alias="cover_image_url")
     date: int = Field(default_factory=lambda: int(time.time()))
     ot: t.Literal["custom"] = Field(default="custom", const=True)
     type: t.Literal["user"] = Field(default="user", const=True)

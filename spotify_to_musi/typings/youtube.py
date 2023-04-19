@@ -24,7 +24,7 @@ class _YouTubeMusicResultType(BaseModel):
 
 
 class YouTubeMusicSong(_YouTubeMusicResultType):
-    album: YouTubeMusicAlbum | None
+    album: t.Optional[YouTubeMusicAlbum]
     is_explicit: bool
 
     @validator("album")
@@ -42,11 +42,11 @@ class YouTubeMusicVideo(_YouTubeMusicResultType):
     views: int
 
 
-YouTubeMusicResult = YouTubeMusicSong | YouTubeMusicVideo
+YouTubeMusicResult = t.Union[YouTubeMusicSong, YouTubeMusicVideo]
 
 
 class YouTubeMusicSearch(BaseModel):
-    top_result: YouTubeMusicResult | None
+    top_result: t.Optional[YouTubeMusicResult]
     songs: list[YouTubeMusicSong]
     videos: list[YouTubeMusicVideo]
 
@@ -56,34 +56,10 @@ class YouTubeTrack(Track):
     youtube_name: str
     youtube_duration: int
     youtube_artists: tuple[Artist, ...]
-    is_explicit: bool | None
+    is_explicit: t.Optional[bool]
     video_id: str
 
 
 @dataclass(frozen=True)
 class YouTubePlaylist(Playlist):
     tracks: tuple[YouTubeTrack, ...] = field(repr=False, compare=False)
-
-
-if __name__ == "__main__":
-    from rich import print
-
-    youtube_track = YouTubeTrack(
-        name="test",
-        duration=1,
-        artists=(Artist(name="test"),),
-        youtube_name="test",
-        youtube_duration=1,
-        youtube_artists=(Artist(name="test"),),
-        album_name="test",
-        is_explicit=True,
-        video_id="test",
-    )
-    youtube_playlist = YouTubePlaylist(
-        name="test",
-        id="test",
-        tracks=(youtube_track,),
-        cover_image_url="test",
-    )
-
-    print({youtube_track})

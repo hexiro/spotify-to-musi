@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing as t
+
 from dataclasses import field
 
 from commons import remove_features_from_title, remove_parens
@@ -24,7 +26,7 @@ class Track:
     duration: int
     artists: tuple[Artist, ...]
     # there can be a song on multiple albums, ie. original, deluxe, etc.
-    album_name: str | None = field(compare=False)
+    album_name: t.Optional[str] = field(compare=False)
     is_explicit: bool = field(compare=False)
 
     def __post_init__(self: Track) -> None:
@@ -77,54 +79,5 @@ class Track:
 class Playlist:
     id: str
     name: str = field(compare=False)
-    cover_image_url: str | None = field(repr=False, compare=False)
+    cover_image_url: t.Optional[str] = field(repr=False, compare=False)
     tracks: tuple[Track, ...] = field(repr=False, compare=False)
-
-
-if __name__ == "__main__":
-    from rich import print
-
-    pl1 = Playlist(
-        name="test",
-        id="test",
-        cover_image_url="test",
-        tracks=(
-            Track(
-                name="test",
-                duration=100,
-                artists=(Artist(name="test"),),
-                album_name="test",
-                is_explicit=False,
-            ),
-            Track(
-                name="test2",
-                duration=100,
-                artists=(Artist(name="test2"),),
-                album_name="test2",
-                is_explicit=False,
-            ),
-        ),
-    )
-
-    s: set[Track] = set()
-
-    track1 = Track(
-        name="test",
-        duration=100,
-        artists=(Artist(name="test"),),
-        album_name="test",
-        is_explicit=False,
-    )
-
-    track2 = Track(
-        name="test",
-        duration=100,
-        artists=(Artist(name="test"),),
-        album_name="test",
-        is_explicit=True,
-    )
-
-    s.add(track1)
-    s.add(track2)
-
-    print(s)

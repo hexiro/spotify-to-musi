@@ -10,16 +10,16 @@ class SpotifyResponse(t.TypedDict):
     href: str
     items: list[t.Any]  # potentially make this a generic in future
     limit: int
-    next: str | None
+    next: t.Optional[str]
     offset: int
-    previous: str | None
+    previous: t.Optional[str] 
     total: int
 
 
 class SpotifyImage(BaseModel):
     url: str
-    width: int | None
-    height: int | None
+    width: t.Optional[int]
+    height: t.Optional[int]
 
 
 class SpotifyPlaylistOwner(BaseModel):
@@ -64,8 +64,8 @@ class SpotifyArtist(BaseModel):
 
 
 class SpotifyAlbum(BaseModel):
-    album_group: t.Literal["single"] | str  # not sure what other options are
-    album_type: t.Literal["single"] | str  # not sure what other options are
+    album_group: t.Union[t.Literal["single"], str]  # not sure what other options are
+    album_type: t.Union[t.Literal["single"], str]  # not sure what other options are
     artists: list[SpotifyArtist]
     # 'external_urls': ExternalUrls  noqa: ERA001
     href: str
@@ -76,7 +76,7 @@ class SpotifyAlbum(BaseModel):
     release_date: str
     release_date_precision: str
     total_tracks: int
-    type: t.Literal["album"] | str  # not sure what other options are
+    type: t.Union[t.Literal["album"], str]  # not sure what other options are
     uri: str
 
     @validator("name")
