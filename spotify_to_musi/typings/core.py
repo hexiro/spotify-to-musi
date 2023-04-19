@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import typing as t
-
 from dataclasses import field
 
 from commons import remove_features_from_title, remove_parens

@@ -109,9 +109,7 @@ async def setup() -> None:
     def style_prompt(prompt: str) -> str:
         return f"[bold white]{prompt}[/bold white][grey53]"
 
-    spotify_client_id: str = Prompt.ask(
-        style_prompt("Spotify Client ID"), default=client_id
-    )  # type: ignore
+    spotify_client_id: str = Prompt.ask(style_prompt("Spotify Client ID"), default=client_id)  # type: ignore
     spotify_client_secret: str = Prompt.ask(
         style_prompt("Spotify Client Secret"), default=client_secret
     )  # type: ignore

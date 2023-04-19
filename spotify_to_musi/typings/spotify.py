@@ -12,7 +12,7 @@ class SpotifyResponse(t.TypedDict):
     limit: int
     next: t.Optional[str]
     offset: int
-    previous: t.Optional[str] 
+    previous: t.Optional[str]
     total: int
 
 

@@ -32,9 +32,3 @@ async def transfer_spotify_to_musi(
     rich.print(
         f"[bold][dark_orange3]MUSI IMPORT:[/dark_orange3]: [white]{import_style}[/white][/bold]"
     )
-
-
-if __name__ == "__main__":
-    asyncio.run(
-        transfer_spotify_to_musi(transfer_user_library=True, extra_playlist_urls=[])
-    )
