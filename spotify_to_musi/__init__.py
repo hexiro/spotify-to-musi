@@ -6,7 +6,6 @@ import sys
 import rich.traceback
 import warnings
 
-from requests.exceptions
 
 rich.traceback.install()
 sys.path.append(str(pathlib.Path(__file__).parent))
