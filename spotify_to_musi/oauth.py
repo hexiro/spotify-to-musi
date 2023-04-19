@@ -95,9 +95,7 @@ def attach_endpoints(
             status=500,
         )
 
-    @app.route(
-        "/callback/spotify"
-    )  # REGISTER THIS ROUTE AS REDIRECT URI IN SPOTIFY DEV CONSOLE
+    @app.route("/callback/spotify")  # REGISTER THIS ROUTE AS REDIRECT URI IN SPOTIFY DEV CONSOLE
     async def _spotify_callback(request: sanic.Request) -> sanic.HTTPResponse:
         error = request.args.get("error")
         code = request.args.get("code")
@@ -136,9 +134,7 @@ def attach_endpoints(
             app.stop()
 
 
-def create_app(
-    app_name: str, spotify_client_id: str, spotify_client_secret: str
-) -> sanic.Sanic:
+def create_app(app_name: str, spotify_client_id: str, spotify_client_secret: str) -> sanic.Sanic:
     client_creds = ClientCreds(
         client_id=spotify_client_id,
         client_secret=spotify_client_secret,

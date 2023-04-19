@@ -12,9 +12,7 @@ from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 # https://regex101.com/r/r4mp7V/1
 # works on tracks and playlists
-SPOTIFY_ID_REGEX = re.compile(
-    r"((https?:\/\/(.*?)(playlist|track)s?\/|spotify:(playlist|track):)(?P<id>.*))"
-)
+SPOTIFY_ID_REGEX = re.compile(r"((https?:\/\/(.*?)(playlist|track)s?\/|spotify:(playlist|track):)(?P<id>.*))")
 
 
 def task_description(*, querying: str, color: str, subtype: str | None = None) -> str:
@@ -49,9 +47,7 @@ def loaded_message(
 
 
 def skipping_message(*, text: str, reason: str) -> str:
-    return (
-        f"[bold yellow1]SKIPPING:[/bold yellow1] {text} [yellow1][{reason}][/yellow1]"
-    )
+    return f"[bold yellow1]SKIPPING:[/bold yellow1] {text} [yellow1][{reason}][/yellow1]"
 
 
 async def load_spotify_credentials() -> dict[str, t.Any] | None:
@@ -64,12 +60,8 @@ async def load_spotify_credentials() -> dict[str, t.Any] | None:
     return json.loads(spotify_creds_text)
 
 
-def spotify_client_credentials_from_file(
-    spotify_creds_json: dict[str, t.Any]
-) -> tuple[str, str] | None:
-    def dict_or_env_value(
-        data: dict[str, t.Any], key: str, env_variable: str | None = None
-    ) -> str | None:
+def spotify_client_credentials_from_file(spotify_creds_json: dict[str, t.Any]) -> tuple[str, str] | None:
+    def dict_or_env_value(data: dict[str, t.Any], key: str, env_variable: str | None = None) -> str | None:
         """
         Gets a value from a provided dictionary or the system's environment variables.
         """
@@ -80,9 +72,7 @@ def spotify_client_credentials_from_file(
         return None
 
     client_id = dict_or_env_value(spotify_creds_json, "client_id", "SPOTIFY_CLIENT_ID")
-    client_secret = dict_or_env_value(
-        spotify_creds_json, "client_secret", "SPOTIFY_CLIENT_SECRET"
-    )
+    client_secret = dict_or_env_value(spotify_creds_json, "client_secret", "SPOTIFY_CLIENT_SECRET")
 
     if not client_id or not client_secret:
         return None

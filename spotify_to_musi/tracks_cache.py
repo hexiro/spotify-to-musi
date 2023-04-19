@@ -31,9 +31,7 @@ async def cache_youtube_tracks() -> None:
     tracks = await load_cached_youtube_tracks()
     sorted_youtube_tracks = sorted(tracks, key=lambda t: t.primary_artist.name)
 
-    youtube_tracks_json = json.dumps(
-        sorted_youtube_tracks, default=pydantic.json.pydantic_encoder
-    )
+    youtube_tracks_json = json.dumps(sorted_youtube_tracks, default=pydantic.json.pydantic_encoder)
 
     async with aiofiles.open(YOUTUBE_DATA_CACHE_PATH, "w") as f:
         await f.write(youtube_tracks_json)
@@ -97,9 +95,7 @@ async def update_cached_tracks(youtube_tracks: t.Iterable[YouTubeTrack]) -> None
 
 async def match_tracks_to_youtube_tracks(
     tracks: t.Iterable[Track],
-) -> tuple[
-    YouTubeTrack, ...
-]:  # sourcery skip: for-append-to-extend, list-comprehension
+) -> tuple[YouTubeTrack, ...]:  # sourcery skip: for-append-to-extend, list-comprehension
     """
     Match the tracks to the cached YouTube tracks.
     """

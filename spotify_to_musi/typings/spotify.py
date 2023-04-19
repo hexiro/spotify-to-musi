@@ -121,11 +121,7 @@ class SpotifyTrack(BaseModel):
     def album_name(self: SpotifyTrack) -> str | None:
         # song is a single and has the single name as the album name,
         # represent this as None internally because it's not really an album
-        if (
-            self.album.album_type == "single"
-            or self.album.album_group == "single"
-            or self.album.total_tracks == 1
-        ):
+        if self.album.album_type == "single" or self.album.album_group == "single" or self.album.total_tracks == 1:
             return None
 
         return self.album.name

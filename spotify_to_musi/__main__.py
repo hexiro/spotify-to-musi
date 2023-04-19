@@ -69,20 +69,14 @@ async def transfer(user: bool, playlist: list[str]) -> None:
     try:
         await spotify.spotify.me()
     except pyfy.excs.SpotifyError:
-        rich.print(
-            "[bold red]Spotify not authorized. Please run `[white]setup[/white]` first.[/bold red]"
-        )
+        rich.print("[bold red]Spotify not authorized. Please run `[white]setup[/white]` first.[/bold red]")
         return
 
     if not user and not playlist:
-        rich.print(
-            "[bold red]Failed to transfer. No playlist(s) nor the user's library were specified.[/bold red]"
-        )
+        rich.print("[bold red]Failed to transfer. No playlist(s) nor the user's library were specified.[/bold red]")
         return
 
-    await main.transfer_spotify_to_musi(
-        transfer_user_library=user, extra_playlist_urls=playlist
-    )
+    await main.transfer_spotify_to_musi(transfer_user_library=user, extra_playlist_urls=playlist)
 
 
 @cli.command()
@@ -128,9 +122,7 @@ async def setup() -> None:
         await spotify.spotify.me()
     except pyfy.excs.SpotifyError:
         SPOTIFY_CREDENTIALS_PATH.unlink()
-        rich.print(
-            "[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]"
-        )
+        rich.print("[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]")
 
     rich.print("[bold green]Spotify Authorized![/bold green]")
 

@@ -71,7 +71,9 @@ class Track:
         """
         Colorized query used w/ rich lib for printing
         """
-        return f"[bold white]{self.primary_artist.name}[/bold white] - [grey53]{self.name}{self.featuring_text}[/grey53]"
+        return (
+            f"[bold white]{self.primary_artist.name}[/bold white] - [grey53]{self.name}{self.featuring_text}[/grey53]"
+        )
 
 
 @dataclass(frozen=True)

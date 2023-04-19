@@ -78,14 +78,10 @@ def generate_musi_uuid(musi_videos: list[MusiVideo]) -> uuid.UUID:
     """
     Generate a deterministic UUID based on the video IDs of the provided MusiVideo-s.
     """
-    musi_video_dicts = [
-        musi_video.dict(exclude={"created_date": True}) for musi_video in musi_videos
-    ]
+    musi_video_dicts = [musi_video.dict(exclude={"created_date": True}) for musi_video in musi_videos]
     musi_video_dicts.sort(key=lambda item: item["video_creator"])
 
-    musi_videos_json = json.dumps(
-        musi_video_dicts, default=pydantic.json.pydantic_encoder
-    )
+    musi_videos_json = json.dumps(musi_video_dicts, default=pydantic.json.pydantic_encoder)
     musi_videos_json_bytes = musi_videos_json.encode("utf-8")
 
     # md5 is not a very secure hash function,

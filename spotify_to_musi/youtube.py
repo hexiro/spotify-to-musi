@@ -32,9 +32,7 @@ async def query_youtube(
         deduplicated_tracks.update(set(playlist.tracks))
 
     total = len(deduplicated_tracks)
-    task_id = progress.add_task(
-        task_description(querying="YouTube", color="red"), total=total
-    )
+    task_id = progress.add_task(task_description(querying="YouTube", color="red"), total=total)
 
     youtube_tracks = await fetch_youtube_tracks(deduplicated_tracks, progress, task_id)
     await tracks_cache.update_cached_tracks(youtube_tracks)
@@ -116,9 +114,7 @@ def youtube_music_search_options(
 async def convert_track_to_youtube_track(
     track: Track, client: httpx.AsyncClient, progress: Progress, task_id: TaskID
 ) -> YouTubeTrack | None:
-    cached_tracks_dict: dict[
-        Track, YouTubeTrack
-    ] = await tracks_cache.load_cached_tracks_dict()
+    cached_tracks_dict: dict[Track, YouTubeTrack] = await tracks_cache.load_cached_tracks_dict()
     cached_tracks: set[Track] = await tracks_cache.load_cached_tracks()
 
     def advance() -> None:
@@ -171,9 +167,7 @@ async def convert_track_to_youtube_track(
         artists=track.artists,
         youtube_name=youtube_music_result.title,
         youtube_duration=youtube_music_result.duration,
-        youtube_artists=tuple(
-            Artist(name=x.name) for x in youtube_music_result.artists
-        ),
+        youtube_artists=tuple(Artist(name=x.name) for x in youtube_music_result.artists),
         album_name=album_name,
         is_explicit=is_explicit,
         video_id=youtube_music_result.video_id,
@@ -190,18 +184,12 @@ async def fetch_youtube_tracks(
         youtube_tracks_tasks: list[asyncio.Task[YouTubeTrack | None]] = []
 
         for track in tracks:
-            coro = convert_track_to_youtube_track(
-                track=track, client=client, progress=progress, task_id=task_id
-            )
+            coro = convert_track_to_youtube_track(track=track, client=client, progress=progress, task_id=task_id)
             task = asyncio.create_task(coro)
             youtube_tracks_tasks.append(task)
 
-        youtube_tracks_or_null: list[YouTubeTrack | None] = await asyncio.gather(
-            *youtube_tracks_tasks
-        )
-        youtube_tracks: tuple[YouTubeTrack, ...] = tuple(
-            x for x in youtube_tracks_or_null if x is not None
-        )
+        youtube_tracks_or_null: list[YouTubeTrack | None] = await asyncio.gather(*youtube_tracks_tasks)
+        youtube_tracks: tuple[YouTubeTrack, ...] = tuple(x for x in youtube_tracks_or_null if x is not None)
 
     return youtube_tracks
 
@@ -269,9 +257,7 @@ def explicit_score(real_is_explicit: bool, result_is_explicit: bool) -> float:
     return 0
 
 
-def artists_score(
-    real_artists: tuple[Artist, ...], result_artists: tuple[YouTubeMusicArtist, ...]
-) -> float:
+def artists_score(real_artists: tuple[Artist, ...], result_artists: tuple[YouTubeMusicArtist, ...]) -> float:
     real_artist_names = [a.name.lower() for a in real_artists]
     result_artist_names = [a.name.lower() for a in result_artists]
 
