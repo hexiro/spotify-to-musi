@@ -79,7 +79,7 @@ async def setup() -> None:
     """
     Configure Spotify w/ OAuth.
     """
-    spotify_to_musi_text = "[bold][green]Spotify[/green][reset]-to-[/reset][dark_orange3]Musi[/dark_orange3][/bold]"
+    spotify_to_musi_text = "[bold][green]Spotify[/green][white]-to-[/white][dark_orange3]Musi[/dark_orange3][/bold]"
     welcome_text = f"{spotify_to_musi_text} first time setup! [i grey53](Ctrl + C to exit)[/i grey53]\n"
 
     stored_client_id: str | None = None
@@ -106,7 +106,7 @@ async def setup() -> None:
         spotify_client_secret = Prompt.ask(style_prompt("Spotify Client Secret"), default=stored_client_secret)
 
     rich.print(
-        f"\nPlease open your browser and navigate to [blue underline]{oauth.URL}[/blue underline].\nAuthorize with Spotify and return once done.\n"
+        f"\nPlease open your browser and navigate to [blue underline]{oauth.URL}[/blue underline]\nAuthorize with Spotify and return once done.\n"
     )
 
     await oauth.run(
