@@ -82,6 +82,8 @@ def views_as_integer(views: str) -> int:
     """
     if not views:
         return 0
+    if views == "No":  # okay youtube music
+        return 0
 
     multipliers: dict[str, int] = {
         "K": 1_000,
