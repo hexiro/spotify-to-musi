@@ -48,6 +48,7 @@ ruff = "^0.0.261"
 black = "^23.3.0"
 isort = "^5.12.0"
 types-aiofiles = "^23.1.0.1"
+pre-commit = "^3.2.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
