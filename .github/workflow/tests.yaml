@@ -1,0 +1,26 @@
+name: tests
+on:
+  - push
+  - pull_request
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # setting just 3.10 bugs out for some reason
+        python-version: [3.7, 3.8, 3.9, 3.10.7, 3.11.0]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: install poetry & deps
+        run: |
+          pip install poetry
+          poetry install
+      - name: run pre-commit hooks
+        run: |
+          poetry run pre-commit install
+          poetry run pre-commit run --all-files

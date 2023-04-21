@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "spotify-to-musi"
 description = "Transfer Spotify playlists to Musi."
-version = "2.0.0rc1"
+version = "2.0.0rc2"
 readme = "README.md"
 license = "MIT"
 authors = ["Hexiro <mail@hexiro.me>"]
@@ -13,7 +13,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
