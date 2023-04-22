@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import sys
 import typing as t
 
 import pyfy.excs
@@ -25,6 +26,14 @@ def async_cmd(func: t.Callable) -> t.Callable:
 
     @functools.wraps(func)
     def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
+        if sys.platform == "win32":
+            # Set the policy to prevent "Event loop is closed" error on Windows - https://github.com/encode/httpx/issues/914
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        elif sys.platform == "linux":
+            import uvloop
+
+            uvloop.install()
+
         return asyncio.run(func(*args, **kwargs))
 
     return wrapper
