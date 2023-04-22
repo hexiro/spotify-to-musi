@@ -12,6 +12,14 @@ from spotify_to_musi.typings.core import (
 )
 from spotify_to_musi.typings.youtube import YouTubeTrack
 
+if t.TYPE_CHECKING:
+    import sys
+
+    if sys.version_info <= (3, 10):
+        from typing_extensions import NotRequired
+    else:
+        from typing import NotRequired
+
 
 @dataclass(frozen=True)
 class MusiTrack(YouTubeTrack):
@@ -52,7 +60,7 @@ class MusiPlaylistDict(t.TypedDict):
     name: str
     type: t.Literal["user"]
     date: int  # int(time.time())
-    ciu: t.NotRequired[str]  # playlist cover image (url)  type: ignore[name-defined]
+    ciu: NotRequired[str]  # playlist cover image (url)
 
 
 class MusiPlaylist(BaseModel):

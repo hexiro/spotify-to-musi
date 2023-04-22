@@ -16,7 +16,14 @@ from spotify_to_musi.typings.youtube import (
 )
 
 if t.TYPE_CHECKING:
+    import sys
+
     import httpx
+
+    if sys.version_info <= (3, 10):
+        from typing_extensions import TypeAlias
+    else:
+        from typing import TypeAlias
 
 
 YT_MUSIC_DOMAIN = "https://music.youtube.com"
@@ -41,8 +48,8 @@ YT_MUSIC_CONTEXT = {
 }
 
 
-CategoryKey: t.TypeAlias = t.Literal["musicCardShelfRenderer", "musicShelfRenderer", "itemSectionRenderer"]
-Category: t.TypeAlias = t.Literal["Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"]
+CategoryKey: TypeAlias = t.Literal["musicCardShelfRenderer", "musicShelfRenderer", "itemSectionRenderer"]
+Category: TypeAlias = t.Literal["Songs", "Videos", "Albums", "Artists", "Community playlists", "Featured playlists"]
 
 CATEGORIES: t.Final = (
     "Songs",
