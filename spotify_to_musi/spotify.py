@@ -9,15 +9,21 @@ import pyfy.excs
 import rich
 from pyfy import AsyncSpotify, ClientCreds
 
-from spotify_to_musi.commons import (SPOTIFY_ID_REGEX,
-                                     load_spotify_credentials, loaded_message,
-                                     skipping_message,
-                                     spotify_client_credentials_from_file,
-                                     task_description)
+from spotify_to_musi.commons import (
+    SPOTIFY_ID_REGEX,
+    load_spotify_credentials,
+    loaded_message,
+    skipping_message,
+    spotify_client_credentials_from_file,
+    task_description,
+)
 from spotify_to_musi.typings.core import Artist, Playlist, Track
-from spotify_to_musi.typings.spotify import (BasicSpotifyPlaylist,
-                                             SpotifyPlaylist, SpotifyResponse,
-                                             SpotifyTrack)
+from spotify_to_musi.typings.spotify import (
+    BasicSpotifyPlaylist,
+    SpotifyPlaylist,
+    SpotifyResponse,
+    SpotifyTrack,
+)
 
 if t.TYPE_CHECKING:
     from rich.progress import Progress, TaskID

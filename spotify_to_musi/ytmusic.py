@@ -4,12 +4,16 @@ import contextlib
 import time
 import typing as t
 
-from spotify_to_musi.exceptions import (YouTubeMusicNoOverlayError,
-                                        YouTubeMusicSearchError)
-from spotify_to_musi.typings.youtube import (YouTubeMusicResult,
-                                             YouTubeMusicSearch,
-                                             YouTubeMusicSong,
-                                             YouTubeMusicVideo)
+from spotify_to_musi.exceptions import (
+    YouTubeMusicNoOverlayError,
+    YouTubeMusicSearchError,
+)
+from spotify_to_musi.typings.youtube import (
+    YouTubeMusicResult,
+    YouTubeMusicSearch,
+    YouTubeMusicSong,
+    YouTubeMusicVideo,
+)
 
 if t.TYPE_CHECKING:
     import httpx

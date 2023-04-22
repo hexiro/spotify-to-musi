@@ -8,8 +8,7 @@ import rich
 
 from spotify_to_musi import ytmusic
 from spotify_to_musi.typings.core import Artist, Track
-from spotify_to_musi.youtube import (youtube_music_search_options,
-                                     youtube_result_score)
+from spotify_to_musi.youtube import youtube_music_search_options, youtube_result_score
 
 if t.TYPE_CHECKING:
     from spotify_to_musi.typings.youtube import YouTubeMusicResult

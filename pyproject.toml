@@ -72,4 +72,7 @@ ignore = [
 
 [tool.mypy]
 ignore_missing_imports = true
-disable-error-code = "call-arg"
+disable_error_code = "call-arg"
+
+[tool.isort]
+profile = "black"

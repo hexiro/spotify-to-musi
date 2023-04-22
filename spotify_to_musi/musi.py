@@ -10,10 +10,16 @@ import pydantic.error_wrappers
 import pydantic.json
 import rich
 
-from spotify_to_musi.typings.musi import (MusiLibrary, MusiLibraryDict,
-                                          MusiPlaylist, MusiPlaylistDict,
-                                          MusiResponse, MusiTrack, MusiVideo,
-                                          MusiVideoDict)
+from spotify_to_musi.typings.musi import (
+    MusiLibrary,
+    MusiLibraryDict,
+    MusiPlaylist,
+    MusiPlaylistDict,
+    MusiResponse,
+    MusiTrack,
+    MusiVideo,
+    MusiVideoDict,
+)
 
 if t.TYPE_CHECKING:
     from spotify_to_musi.typings.youtube import YouTubePlaylist, YouTubeTrack
