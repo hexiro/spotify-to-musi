@@ -52,7 +52,7 @@ class MusiPlaylistDict(t.TypedDict):
     name: str
     type: t.Literal["user"]
     date: int  # int(time.time())
-    ciu: t.NotRequired[str]  # playlist cover image (url)
+    ciu: t.NotRequired[str]  # playlist cover image (url)  type: ignore[name-defined]
 
 
 class MusiPlaylist(BaseModel):

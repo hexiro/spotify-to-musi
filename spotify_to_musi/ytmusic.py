@@ -157,18 +157,10 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict) -> dict | 
         8: { "text": "2:16 }
     ]
     """
-
-    class Run(t.TypedDict):
-        text: str
-        navigationEndpoint: t.NotRequired[t.Any]  # noqa: N815
-
-    class Artist(t.TypedDict):
-        name: str
-
     title: str = title_data["runs"][0]["text"]
 
     old_runs = video_data["runs"]
-    new_runs: list[Run] = []
+    new_runs: list[t.Any] = []
 
     # weird youtube music bug where a song is bugged but still shows up in search results
     # which leads to 'olds_runs' being the channel name, the dot and then the duration.
@@ -209,11 +201,11 @@ def parse_title_and_subtitle_data(title_data: dict, video_data: dict) -> dict | 
     views_or_album: str = new_runs.pop()["text"]
 
     if views_or_album.endswith("views"):
-        data["views"] = views_as_integer(views_or_album.removesuffix(" views"))
+        data["views"] = views_as_integer(views_or_album.rstrip(" views"))
     else:
         data["album"] = {"name": views_or_album}
 
-    artists: list[Artist] = [{"name": run["text"]} for run in new_runs]
+    artists = [{"name": run["text"]} for run in new_runs]
     data["artists"] = tuple(artists)
 
     return data
