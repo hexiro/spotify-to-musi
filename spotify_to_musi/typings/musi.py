@@ -7,8 +7,8 @@ from dataclasses import field
 from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
 
-from spotify_to_musi.typings.core import (
-    Artist,  # weird pydantic case where this has to be imported
+from spotify_to_musi.typings.core import (  # weird pydantic case where this has to be imported # noqa: F401
+    Artist,
 )
 from spotify_to_musi.typings.youtube import YouTubeTrack
 

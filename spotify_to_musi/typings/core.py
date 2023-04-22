@@ -9,12 +9,6 @@ from spotify_to_musi.commons import remove_features_from_title, remove_parens
 from spotify_to_musi.exceptions import EmptyTupleError
 
 
-def validate_tuple_isnt_empty(name: str, value: tuple) -> tuple:
-    if not value:
-        raise EmptyTupleError(name)
-    return value
-
-
 @dataclass(frozen=True)
 class Artist:
     name: str
@@ -30,7 +24,8 @@ class Track:
     is_explicit: bool = field(compare=False)
 
     def __post_init__(self: Track) -> None:
-        validate_tuple_isnt_empty("artists", self.artists)
+        if not self.artists:
+            raise EmptyTupleError("artists")
 
     @property
     def primary_artist(self: Track) -> Artist:
