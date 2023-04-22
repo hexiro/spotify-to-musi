@@ -5,3 +5,4 @@ __pycache__/
 dist/
 build/
 spotify_to_musi.egg-info/
+SPOTIFY_CREDS.json

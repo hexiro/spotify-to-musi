@@ -1,42 +1,52 @@
 """Entrypoint and CLI handler."""
 from __future__ import annotations
 
-import logging
-import os
+import asyncio
+import functools
+import sys
+import typing as t
 
-from typing import TYPE_CHECKING
+import pyfy.excs
 import rich
-
 import rich_click as click
-import spotipy
-import spotipy.oauth2
-import spotipy.exceptions
+from rich.prompt import Prompt
 
-from .commons import SPOTIFY_ID_REGEX
-from .cache import has_unpatched_spotify_secrets, patch_spotify_secrets, store_spotify_secrets
-from .main import get_spotify, transfer_spotify_to_musi
-from .paths import spotify_cache_path, spotify_data_path
+from spotify_to_musi import main, oauth, spotify
+from spotify_to_musi.commons import spotify_client_credentials
+from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 
-if TYPE_CHECKING:
-    from .typings.spotify import SpotifyLikedSong, SpotifyPlaylist
+def async_cmd(func: t.Callable) -> t.Callable:
+    """
+    Hack to make click support async commands.
 
+    Reference:
+        https://stackoverflow.com/q/67558717/10830115
+    """
 
-click.rich_click.STYLE_OPTION = "bold magenta"
-click.rich_click.STYLE_SWITCH = "bold blue"
-click.rich_click.STYLE_METAVAR = "bold red"
-click.rich_click.MAX_WIDTH = 75
+    @functools.wraps(func)
+    def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
+        if sys.platform == "win32":
+            # Set the policy to prevent "Event loop is closed" error on Windows - https://github.com/encode/httpx/issues/914
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        elif sys.platform == "linux":
+            import uvloop  # type: ignore
 
-console = rich.get_console()
-logger = logging.getLogger(__name__)
+            uvloop.install()
+
+        return asyncio.run(func(*args, **kwargs))
+
+    return wrapper
 
 
 @click.group()
-def cli():
+@async_cmd
+async def cli() -> None:
     pass
 
 
 @cli.command()
+@async_cmd
 @click.option(
     "-u",
     "--user",
@@ -45,71 +55,82 @@ def cli():
     default=False,
     show_default=True,
 )
-@click.option("-pl", "--playlist", help="Transfer Spotify playlist(s) by URL.", multiple=True, type=str)
-def transfer(user: bool, playlist: list[str]):
-    """Transfer songs from Spotify to Musi."""
-    if has_unpatched_spotify_secrets():
-        patch_spotify_secrets()
+@click.option(
+    "-pl",
+    "--playlist",
+    help="Transfer Spotify playlist(s) by URL.",
+    multiple=True,
+    type=str,
+)
+async def transfer(user: bool, playlist: list[str]) -> None:
+    """
+    Transfer songs from Spotify to Musi.
+    """
+
+    await spotify.init()
 
     try:
-        get_spotify()
-    except spotipy.oauth2.SpotifyOauthError:
-        console.print("[red]Spotify not authorized. Please run `setup` first.[/red]")
+        await spotify.spotify.me()
+    except pyfy.excs.SpotifyError:
+        rich.print("[bold red]Spotify not authorized. Please run `[white]setup[/white]` first.[/bold red]")
         return
 
     if not user and not playlist:
-        console.print("[red]Not uploading user's playlists and no playlist(s) were specified.[/red]")
+        rich.print("[bold red]Failed to transfer. No playlist(s) nor the user's library were specified.[/bold red]")
         return
 
-    transfer_spotify_to_musi(user, playlist)
+    await main.transfer_spotify_to_musi(transfer_user_library=user, extra_playlist_urls=playlist)
 
 
 @cli.command()
-def setup():
-    """Configure Spotify API and other options."""
-    grey = "#808080"
-    spotify_to_musi_text = f"[bold][green]spotify[/green][reset]-to-[/reset][dark_orange3]musi[/dark_orange3][/bold]"
-    welcome_text = f"Welcome to {spotify_to_musi_text} first time setup! [i](Ctrl + C to exit)[/i]"
+@async_cmd
+async def setup() -> None:
+    """
+    Configure Spotify w/ OAuth.
+    """
+    spotify_to_musi_text = "[bold][green]Spotify[/green][white]-to-[/white][dark_orange3]Musi[/dark_orange3][/bold]"
+    welcome_text = f"{spotify_to_musi_text} first time setup! [i grey53](Ctrl + C to exit)[/i grey53]\n"
 
-    if has_unpatched_spotify_secrets():
-        patch_spotify_secrets()
-        welcome_text += (
-            "\n* Your secrets are already set! Only run this script again if you need to authorize with Spotify again."
-        )
+    stored_client_id: str | None = None
+    stored_client_secret: str | None = None
 
-    console.print(welcome_text, highlight=True, markup=True)
+    spotify_client_creds = await spotify_client_credentials()
+    if spotify_client_creds:
+        stored_client_id, stored_client_secret = spotify_client_creds
 
-    def prompt(for_: str, default: str | None = None) -> str:
-        default_text: str = ""
-        if default:
-            if len(default) > 5:
-                mid_point = len(default) // 2
-                default_fragment = f"{default[:mid_point]}..."
-            else:
-                default_fragment = default
-            default_text = f" [{grey}][[i]{default_fragment}[/i]][/{grey}]"
-        text = f"[magenta]{for_}{default_text}[/magenta]: "
+    if stored_client_id and stored_client_secret:
+        welcome_text += "[grey53]* Your secrets are already set! Only run this script if you need to authorize with Spotify again.[/grey53]\n"
 
-        res = console.input(text) or default
-        while not res:
-            console.print("[red]Please enter a value.[/red]")
-            res = console.input(text)
-        return res
+    rich.print(welcome_text)
 
-    spotify_client_id = prompt("Spotify Client ID", default=os.getenv("SPOTIPY_CLIENT_ID"))
-    spotify_client_secret = prompt("Spotify Client Secret", default=os.getenv("SPOTIPY_CLIENT_SECRET"))
-    store_spotify_secrets(spotify_client_id, spotify_client_secret)
-    patch_spotify_secrets()
+    def style_prompt(prompt: str) -> str:
+        return f"[bold white]{prompt}[/bold white][grey53]"
+
+    spotify_client_id: str | None = None
+    spotify_client_secret: str | None = None
+
+    while not spotify_client_id:
+        spotify_client_id = Prompt.ask(style_prompt("Spotify Client ID"), default=stored_client_id)
+    while not spotify_client_secret:
+        spotify_client_secret = Prompt.ask(style_prompt("Spotify Client Secret"), default=stored_client_secret)
+
+    rich.print(
+        f"\nPlease open your browser and navigate to [blue underline]{oauth.URL}[/blue underline]\nAuthorize with Spotify and return once done.\n"
+    )
+
+    await oauth.run(
+        spotify_client_id=spotify_client_id,
+        spotify_client_secret=spotify_client_secret,
+    )
+
     try:
-        get_spotify()
-    except spotipy.oauth2.SpotifyOauthError:
-        spotify_cache_path.unlink()
-    try:
-        get_spotify()
-    except spotipy.oauth2.SpotifyOauthError:
-        console.print("[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]")
-        return
-    console.print("[green]Spotify authorized![/green]")
+        await spotify.init()
+        await spotify.spotify.me()
+    except pyfy.excs.SpotifyError:
+        SPOTIFY_CREDENTIALS_PATH.unlink()
+        rich.print("[red]Uh Oh? Spotify isn't authorized. Please check your credentials.[/red]")
+
+    rich.print("[bold green]Spotify Authorized![/bold green]")
 
 
 if __name__ == "__main__":

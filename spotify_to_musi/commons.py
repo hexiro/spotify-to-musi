@@ -1,55 +1,116 @@
 from __future__ import annotations
-import hashlib
+
+import contextlib
 import json
-
+import os
 import re
-from typing import TYPE_CHECKING
-import uuid
+import typing as t
 
-if TYPE_CHECKING:
-    from typing import Iterable
-    from uuid import UUID
-    from .typings.core import LikedSongs, Playlist
+import aiofiles
 
+from spotify_to_musi.paths import SPOTIFY_CREDENTIALS_PATH
 
 # https://regex101.com/r/r4mp7V/1
 # works on tracks and playlists
 SPOTIFY_ID_REGEX = re.compile(r"((https?:\/\/(.*?)(playlist|track)s?\/|spotify:(playlist|track):)(?P<id>.*))")
 
 
-def compute_tracks_uuid(liked_songs: LikedSongs, playlists: list[Playlist]) -> UUID:
-    # aims to use json.dumps to compute a hash of a tree of objects no matter the order
-    # of the objects in the tree (if you have suggestions don't be afraid to shoot)
+def task_description(*, querying: str, color: str, subtype: str | None = None) -> str:
+    desc = f"[bold][{color}]Querying {querying}"
 
-    def hash_json_tree(list_: Iterable[dict | list | list[dict]]) -> str:
+    if subtype is not None:
+        desc += f" [ [white]{subtype}[/white] ] "
+
+    desc += f"[/{color}][/bold]..."
+    return desc
+
+
+def loaded_message(
+    *,
+    source: str,
+    loaded: str,
+    color: str,
+    name: str | None = None,
+    tracks_count: int | None = None,
+) -> str:
+    msg = f"[bold {color}]{source.upper()}:[/bold {color}] Loaded {loaded} "
+
+    tracks_parens = ("(", ")")
+    if name is not None:
+        tracks_parens = ("[", "]")
+        msg += f"([grey53]{name}[/grey53]) "
+    if tracks_count is not None:
+        left, right = tracks_parens
+        msg += f"{left}[{color}]{tracks_count}[/{color}] [grey53]tracks[/grey53]{right}"
+
+    return msg
+
+
+def skipping_message(*, text: str, reason: str) -> str:
+    return f"[bold yellow1]SKIPPING:[/bold yellow1] {text} [yellow1][{reason}][/yellow1]"
+
+
+async def load_spotify_credentials() -> dict[str, t.Any] | None:
+    if not SPOTIFY_CREDENTIALS_PATH.is_file():
+        return None
+
+    async with aiofiles.open(SPOTIFY_CREDENTIALS_PATH, "r") as file:
+        spotify_creds_text = await file.read()
+
+    return json.loads(spotify_creds_text)
+
+
+def spotify_client_credentials_from_file(spotify_creds_json: dict[str, t.Any]) -> tuple[str, str] | None:
+    def dict_or_env_value(data: dict[str, t.Any], key: str, env_variable: str | None = None) -> str | None:
         """
-        Calculate md5 hash of list of dicts or list.
+        Gets a value from a provided dictionary or the system's environment variables.
         """
-        md5_hash = hashlib.md5()
+        with contextlib.suppress(KeyError):
+            return data[key]
+        with contextlib.suppress(KeyError):
+            return os.environ[env_variable or key]
+        return None
 
-        dumped_strings: list[str] = []
+    client_id = dict_or_env_value(spotify_creds_json, "client_id", "SPOTIFY_CLIENT_ID")
+    client_secret = dict_or_env_value(spotify_creds_json, "client_secret", "SPOTIFY_CLIENT_SECRET")
 
-        for fragment in list_:
-            if isinstance(fragment, list):
-                dumped = hash_json_tree(fragment)
-            else:
-                dumped = json.dumps(fragment, sort_keys=True)
-            dumped_strings.append(dumped)
+    if not client_id or not client_secret:
+        return None
 
-        dumped_strings.sort()
+    return client_id, client_secret
 
-        for dumped in dumped_strings:
-            encoded = dumped.encode("utf-8")
-            md5_hash.update(encoded)
 
-        return md5_hash.hexdigest()
+async def spotify_client_credentials() -> tuple[str, str] | None:
+    # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
+    spotify_creds_json = await load_spotify_credentials()
+    if not spotify_creds_json:
+        return None
+    return spotify_client_credentials_from_file(spotify_creds_json)
 
-    # type is more specific than just a dict, so just round to simper types to make type checker happy
-    liked_songs_dicts: list[dict] = [liked_song.to_dict() for liked_song in liked_songs]  # type: ignore
-    playlists_dicts = [playlist.to_dict() for playlist in playlists]
 
-    md5_liked_songs = hash_json_tree(liked_songs_dicts)
-    md5_playlists = hash_json_tree(playlists_dicts)
+def remove_parens(title: str) -> str:
+    bracket_groups = (
+        ("[", "]"),
+        ("(", ")"),
+        ("{", "}"),
+    )
+    for left, right in bracket_groups:
+        while left in title and right in title:
+            left_index = title.index(left)
+            right_index = title.index(right, left_index)
 
-    computed_uuid = uuid.uuid3(uuid.NAMESPACE_OID, md5_liked_songs + md5_playlists)
-    return computed_uuid
+            title = title[:left_index] + title[right_index + 1 :]
+
+    return title
+
+
+def remove_features_from_title(title: str) -> str:
+    ft_index = title.find("ft")
+    feat_index = title.find("feat")
+
+    featuring_index = ft_index if ft_index != -1 else feat_index
+
+    if featuring_index != -1:
+        title = title[:featuring_index]
+
+    return title

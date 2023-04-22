@@ -1,42 +1,66 @@
 from __future__ import annotations
 
-from typing import TypedDict
+import typing as t
+from dataclasses import field
+
+from pydantic import BaseModel, validator
+from pydantic.dataclasses import dataclass
+
+from spotify_to_musi.typings.core import Artist, Playlist, Track
 
 
-class Album(TypedDict):
+class YouTubeMusicArtist(BaseModel):
     name: str
-    id: str | None
 
 
-class Artist(TypedDict):
+class YouTubeMusicAlbum(BaseModel):
     name: str
-    id: str | None
 
 
-class FeedbackTokens(TypedDict):
-    add: None
-    remove: None
-
-
-class Thumbnail(TypedDict):
-    url: str
-    width: int
-    height: int
-
-
-# not all these fields always exist, but they will on a song
-class YoutubeMusicSearch(TypedDict):
-    category: str
-    resultType: str
-    videoId: str
+class _YouTubeMusicResultType(BaseModel):
     title: str
-    views: str  # only on videos
-    artists: list[Artist]
-    album: Album
-    duration: str
-    duration_seconds: int
-    isExplicit: bool  # only on videos
-    feedbackTokens: FeedbackTokens
-    videoType: str
-    year: None
-    thumbnails: list[Thumbnail]
+    artists: tuple[YouTubeMusicArtist, ...]
+    duration: int
+    video_id: str
+
+
+class YouTubeMusicSong(_YouTubeMusicResultType):
+    album: t.Optional[YouTubeMusicAlbum]
+    is_explicit: bool
+
+    @validator("album")
+    def must_not_be_single(
+        cls, v: YouTubeMusicAlbum, values: dict[str, t.Any]  # noqa: ANN101, N805
+    ) -> YouTubeMusicAlbum | None:
+        # sourcery skip: assign-if-exp, reintroduce-else
+        if v.name == values["title"]:
+            return None
+
+        return v
+
+
+class YouTubeMusicVideo(_YouTubeMusicResultType):
+    views: int
+
+
+YouTubeMusicResult = t.Union[YouTubeMusicSong, YouTubeMusicVideo]
+
+
+class YouTubeMusicSearch(BaseModel):
+    top_result: t.Optional[YouTubeMusicResult]
+    songs: list[YouTubeMusicSong]
+    videos: list[YouTubeMusicVideo]
+
+
+@dataclass(frozen=True)
+class YouTubeTrack(Track):
+    youtube_name: str
+    youtube_duration: int
+    youtube_artists: tuple[Artist, ...]
+    is_explicit: t.Optional[bool]  # type: ignore[assignment]
+    video_id: str
+
+
+@dataclass(frozen=True)
+class YouTubePlaylist(Playlist):
+    tracks: tuple[YouTubeTrack, ...] = field(repr=False, compare=False)

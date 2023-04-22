@@ -1,98 +1,80 @@
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, NamedTuple, TypedDict
+import typing as t
+from dataclasses import field
+
+from pydantic.dataclasses import dataclass
+
+from spotify_to_musi.commons import remove_features_from_title, remove_parens
+from spotify_to_musi.exceptions import EmptyTupleError
 
 
-if TYPE_CHECKING:
-    from typing import TypeAlias
-    from typings.musi import MusiVideo, MusiItem
-
-
-@dataclass(eq=True)
-class Playlist:
+@dataclass(frozen=True)
+class Artist:
     name: str
-    id: str
-    cover_url: str
-    tracks: list[Track] = field(default_factory=list, init=False, repr=False, compare=False)
-
-    def remove_unloaded_tracks(self) -> None:
-        self.tracks = [track for track in self.tracks if track.loaded]
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "id": self.id,
-            "cover_url": self.cover_url,
-            "tracks": [track.to_dict() for track in self.tracks],
-        }
 
 
-# youtube video and data about the spotify artist that was used to find it.
-
-
-class TrackDict(TypedDict):
-    artist: str
-    song: str
-    duration: int  # in seconds
-    video_id: str
-
-
-@dataclass(unsafe_hash=True)
+@dataclass(frozen=True)
 class Track:
-    artist: str
-    song: str
-    spotify_duration: int = field(default=-1, compare=False)
-    duration: int = field(default=-1, hash=False, compare=False)  # in seconds
-    video_id: str | None = field(default=None, hash=False, compare=False)
-    creation_time: float = field(default=-1, hash=False, compare=False)
-
-    def __post_init__(self):
-        self.creation_time = time.time()
-
-    @property
-    def title(self) -> str:
-        return f"{self.artist} - {self.song}"
-
-    @property
-    def loaded(self) -> bool:
-        return self.duration != -1 and self.video_id is not None
-
-    def to_dict(self) -> TrackDict:
-        if self.duration == -1 or self.video_id is None:  # if i try and DRY then pylance yells
-            raise Exception("data must be loaded to call this")
-        return {
-            "artist": self.artist,
-            "song": self.song,
-            "duration": self.duration,
-            "video_id": self.video_id,
-        }
-
-    def to_musi_video(self) -> MusiVideo:
-        if self.duration == -1 or self.video_id is None:
-            raise Exception("data must be loaded to call this")
-        return {
-            "created_date": self.creation_time,
-            "video_duration": self.duration,
-            "video_name": self.song,
-            "video_creator": self.artist,
-            "video_id": self.video_id,
-        }
-
-    def to_musi_item(self, position: int) -> MusiItem:
-        if self.duration == -1 or self.video_id is None:
-            raise Exception("data must be loaded to call this")
-        return {
-            "cd": int(self.creation_time),
-            "pos": position,
-            "video_id": self.video_id,
-        }
-
-
-class TrackData(NamedTuple):
+    name: str
     duration: int
-    video_id: str
+    artists: tuple[Artist, ...]
+    # there can be a song on multiple albums, ie. original, deluxe, etc.
+    album_name: t.Optional[str] = field(compare=False)
+    is_explicit: bool = field(compare=False)
+
+    def __post_init__(self: Track) -> None:
+        if not self.artists:
+            raise EmptyTupleError("artists")
+
+    @property
+    def primary_artist(self: Track) -> Artist:
+        return self.artists[0]
+
+    @property
+    def secondary_artists(self: Track) -> tuple[Artist, ...] | None:
+        return self.artists[1:] or None
+
+    @property
+    def featuring_text(self: Track) -> str:
+        # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
+        if not self.secondary_artists:
+            return ""
+        return f" (feat. {' & '.join(a.name for a in self.secondary_artists)})"
+
+    # maybe cache this?
+    @property
+    def name_with_features(self: Track) -> str:
+        """
+        Remove parens and features from title (if they exist)
+        and add features to title.
+        If an artist doesn't list their features in the title themselves,
+        it's better to add it for improved search results.
+        """
+        name = self.name
+        name = remove_parens(name)
+        name = remove_features_from_title(name)
+        return self.name
+
+    @property
+    def query(self: Track) -> str:
+        base_query = f"{self.primary_artist.name} - {self.name_with_features}"
+        base_query += self.featuring_text
+        return base_query
+
+    @property
+    def colorized_query(self: Track) -> str:
+        """
+        Colorized query used w/ rich lib for printing
+        """
+        return (
+            f"[bold white]{self.primary_artist.name}[/bold white] - [grey53]{self.name}{self.featuring_text}[/grey53]"
+        )
 
 
-LikedSongs: TypeAlias = list[Track]
+@dataclass(frozen=True)
+class Playlist:
+    id: str
+    name: str = field(compare=False)
+    cover_image_url: t.Optional[str] = field(repr=False, compare=False)
+    tracks: tuple[Track, ...] = field(repr=False, compare=False)

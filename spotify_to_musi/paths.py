@@ -3,10 +3,10 @@ from __future__ import annotations
 import pathlib
 import sys
 
-__all__ = ("app_data", "spotify_cache_path")
+from spotify_to_musi.exceptions import UnsupportedPlatformError
 
 
-def _app_data() -> pathlib.Path | None:
+def _app_data() -> pathlib.Path:
     """
     Returns a parent directory path
     where persistent application data can be stored.
@@ -25,14 +25,12 @@ def _app_data() -> pathlib.Path | None:
         return home / ".local/share"
     elif sys.platform == "darwin":
         return home / "Library/Application Support"
-    return
+    raise UnsupportedPlatformError(sys.platform)
 
 
-app_data = _app_data()
-assert app_data is not None
+APP_DATA = _app_data()
 
-spotify_to_musi_path = app_data / "spotify-to-musi"
-spotify_to_musi_path.mkdir(exist_ok=True)
-spotify_cache_path = spotify_to_musi_path / "spotify.cache.json"
-spotify_data_path = spotify_to_musi_path / "spotify.data.json"
-data_cache_path = spotify_to_musi_path / "data.cache.json"
+STM_PATH = APP_DATA / "spotify-to-musi"
+STM_PATH.mkdir(exist_ok=True)
+YOUTUBE_DATA_CACHE_PATH = STM_PATH / "youtube-data-cache.json"
+SPOTIFY_CREDENTIALS_PATH = STM_PATH / "spotify-credentials.json"

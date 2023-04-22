@@ -1,140 +1,144 @@
 from __future__ import annotations
 
-from typing import TypedDict
+import typing as t
+
+from pydantic import BaseModel, validator
+
+from spotify_to_musi.exceptions import BlankNameError
 
 
-# --- all --- #
+class SpotifyResponse(t.TypedDict):
+    href: str
+    items: list[t.Any]  # potentially make this a generic in future
+    limit: int
+    next: t.Optional[str]
+    offset: int
+    previous: t.Optional[str]
+    total: int
 
 
-class SpotifyExternalUrls(TypedDict):
-    spotify: str
-
-
-class SpotifyImage(TypedDict):
-    height: int
+class SpotifyImage(BaseModel):
     url: str
-    width: int
+    width: t.Optional[int]
+    height: t.Optional[int]
 
 
-class SpotifyArtist(TypedDict):
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    name: str
-    type: str
-    uri: str
-
-
-class SpotifyAlbum(TypedDict):
-    album_type: str | None
-    artists: list[SpotifyArtist]
-    external_urls: SpotifyExternalUrls
-    href: str | None
-    id: str | None
-    images: list[SpotifyImage]
-    name: str | None
-    release_date: str | None
-    release_date_precision: str | None
-    total_tracks: int  # might not exist if is_local?
-    type: str
-    uri: str | None
-
-
-class SpotifyTrack(TypedDict):
-    album: SpotifyAlbum
-    artists: list[SpotifyArtist]
-    disc_number: int
-    duration_ms: int
-    episode: bool  # might not exist always?
-    explicit: bool
-    external_ids: SpotifyExternalIds
-    external_urls: SpotifyExternalUrls
-    href: str | None
-    id: str | None
-    is_local: bool  # might not exist always?
-    name: str
-    popularity: int
-    preview_url: str | None
-    track: bool  # might not exist if is_local?
-    track_number: int
-    type: str
-    uri: str
-
-
-# --- current user playlists --- #
-
-
-class SpotifyPlaylistOwner(TypedDict):
+class SpotifyPlaylistOwner(BaseModel):
     display_name: str
-    external_urls: SpotifyExternalUrls
     href: str
     id: str
     type: str
     uri: str
 
 
-class SpotifyPlaylistTracks(TypedDict):
+class SpotifyBasicTracks(BaseModel):
     href: str
     total: int
 
 
-class SpotifyPlaylist(TypedDict):
+class BasicSpotifyPlaylist(BaseModel):
+    name: str
+    public: bool
     collaborative: bool
+    id: str
     description: str
-    external_urls: SpotifyExternalUrls
+    href: str
+    uri: str
+    images: list[SpotifyImage]
+    tracks: SpotifyBasicTracks
+    # 'owner': SpotifyPlaylistOwner  noqa: ERA001
+    # 'type': Literalplaylist noqa: ERA001
+
+
+class SpotifyArtist(BaseModel):
+    href: str
+    name: str
+    id: str
+    type: str
+    uri: str
+
+    @validator("name")
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
+        if not v:
+            raise BlankNameError("artist")
+        return v
+
+
+class SpotifyAlbum(BaseModel):
+    album_group: t.Union[t.Literal["single"], str]  # not sure what other options are
+    album_type: t.Union[t.Literal["single"], str]  # not sure what other options are
+    artists: list[SpotifyArtist]
+    # 'external_urls': ExternalUrls  noqa: ERA001
     href: str
     id: str
     images: list[SpotifyImage]
+    is_playable: bool
     name: str
-    owner: SpotifyPlaylistOwner
-    primary_color: None
-    public: bool
-    snapshot_id: str
-    tracks: SpotifyPlaylistTracks
-    type: str
+    release_date: str
+    release_date_precision: str
+    total_tracks: int
+    type: t.Union[t.Literal["album"], str]  # not sure what other options are
     uri: str
 
-
-# --- playlist items --- #
-
-
-class SpotifyPlaylistAddedBy(TypedDict):
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
-    type: str
-    uri: str
+    @validator("name")
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
+        if not v:
+            raise BlankNameError("album")
+        return v
 
 
-class SpotifyExternalIds(TypedDict):
-    isrc: str
-
-
-class SpotifyVideoThumbnail(TypedDict):
-    url: str | None
-
-
-class SpotifyPlaylistItem(TypedDict):
-    added_at: str
-    added_by: SpotifyPlaylistAddedBy
-    is_local: bool
-    primary_color: None
-    track: SpotifyTrack | None
-    video_thumbnail: SpotifyVideoThumbnail
-
-
-# --- liked songs --- #
-
-
-class SpotifyArtistsItem(TypedDict):
-    external_urls: SpotifyExternalUrls
-    href: str
-    id: str
+class SpotifyTrack(BaseModel):
     name: str
-    type: str
-    uri: str
+    id: str
+    duration_ms: int
+    href: str
+    popularity: int
+    # reference: https://hexdocs.pm/spotify_web_api/Spotify.Tracks.html#t:popularity/0
+    # The popularity of the track. The value will be between 0 and 100, with 100 being the most popular. The popularity of a track is a value between 0 and 100, with 100 being the most popular. The popularity is calculated by algorithm and is based, in the most part, on the total number of plays the track has had and how recent those plays are.
+    explicit: bool
+    is_local: bool = False
+    artists: list[SpotifyArtist]
+    # 'available_markets': Union[List, List[str]]   noqa: ERA001
+    # 'track_number': int  noqa: ERA001
+    # 'type': t.Literal['track']  noqa: ERA001
+    # 'uri': str  noqa: ERA001
+    album: SpotifyAlbum
+    # 'disc_number': int  noqa: ERA001
+    # 'external_ids': ExternalIds  noqa: ERA001
+    # 'external_urls': ExternalUrls  noqa: ERA001
+    # 'preview_url': Optional[str]  noqa: ERA001
+
+    @validator("name")
+    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
+        if not v:
+            raise BlankNameError("track")
+        return v
+
+    @property
+    def duration(self: SpotifyTrack) -> int:
+        return self.duration_ms // 1000
+
+    @property
+    def album_name(self: SpotifyTrack) -> str | None:
+        # song is a single and has the single name as the album name,
+        # represent this as None internally because it's not really an album
+        if self.album.album_type == "single" or self.album.album_group == "single" or self.album.total_tracks == 1:
+            return None
+
+        return self.album.name
 
 
-class SpotifyLikedSong(TypedDict):
-    added_at: str
-    track: SpotifyTrack
+class SpotifyPlaylist(BasicSpotifyPlaylist):
+    tracks: list[SpotifyTrack]  # type: ignore[assignment]
+
+    @property
+    def cover_image_url(self: SpotifyPlaylist) -> str | None:
+        # sourcery skip: assign-if-exp, reintroduce-else, swap-if-expression
+        if not self.images:
+            return None
+
+        return self.images[0].url
+
+    @property
+    def track_count(self: SpotifyPlaylist) -> int:
+        return len(self.tracks)
