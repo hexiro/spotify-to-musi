@@ -45,7 +45,7 @@ async def cli() -> None:
     pass
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type, attr-defined]
 @async_cmd
 @click.option(
     "-u",
@@ -82,7 +82,7 @@ async def transfer(user: bool, playlist: list[str]) -> None:
     await main.transfer_spotify_to_musi(transfer_user_library=user, extra_playlist_urls=playlist)
 
 
-@cli.command()
+@cli.command()  # type: ignore[attr-defined]
 @async_cmd
 async def setup() -> None:
     """
@@ -134,4 +134,4 @@ async def setup() -> None:
 
 
 if __name__ == "__main__":
-    cli()
+    cli()  # type: ignore[misc]

@@ -28,13 +28,12 @@ rich = ">=12.6.0 <15.0.0"
 rich-click = "^1.6.1"
 aiofiles = "^23.1.0"
 httpx = ">=0.23.0 <=0.25.0"
-pydantic = "^1.10.7"
+pydantic = "^2.0.2"
 pyfy = "^2.2.0"
 sanic = "^23.3.0"
 async-cache = "^1.1.1"
 typing-extensions = {version = "^4.7.1", python = "<3.11"}
 uvloop = {version = "^0.17.0", platform = "linux"}
-aiohttp = "^3.8.4"
 
 [tool.poetry.scripts]
 spotify-to-musi = "spotify_to_musi.__main__:cli"
@@ -64,7 +63,8 @@ target-version = ["py38"]
 select = ["ANN", "TCH", "N", "S", "B", "A", "C4", "EM", "INP", "PIE", "SIM", "ERA", "TRY", "TID", "RUF", "F"]
 ignore = [
     "E501",    # let black handle line length
-    "ANN401",  # if everything is going to be typed, some things have to be any
+    "ANN401",  # if everything is going to be typed, some things have to be any,
+    "ANN102",  # ignoring type annotations for cls and self
     "A003",    # attributes with the same name as builtins is okay
     "EM101",   # I personally think it's okay to use a string literal in this case.
 ]  
