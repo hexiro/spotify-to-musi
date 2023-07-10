@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "spotify-to-musi"
 description = "Transfer Spotify playlists to Musi."
-version = "2.0.0"
+version = "2.0.1rc1"
 readme = "README.md"
 license = "MIT"
 authors = ["Hexiro <mail@hexiro.me>"]
@@ -24,15 +24,15 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-rich = "^13.3.4"
+rich = "^13.4.2"
 rich-click = "^1.6.1"
 aiofiles = "^23.1.0"
-httpx = "^0.24.0"
-pydantic = "^1.10.7"
+httpx = "^0.24.1"
+pydantic = "^2.0.2"
 pyfy = "^2.2.0"
 sanic = "^23.3.0"
 async-cache = "^1.1.1"
-typing-extensions = {version = "^4.5.0", python = "<3.11"}
+typing-extensions = {version = "^4.7.1", python = "<3.11"}
 uvloop = {version = "^0.17.0", platform = "linux"}
 aiohttp = "^3.8.4"
 
