@@ -304,8 +304,11 @@ def spotify_track_items_to_spotify_tracks(spotify_track_items: list[dict[str, t.
         # weird spotify api bug where track, artist, and album name is blank
         # (usually because the track is by 'various artists' the spotify thing)
         # but w/o this information we can't fetch the track so just skip it
-        except pydantic.error_wrappers.ValidationError:
-            continue
+        except pydantic.error_wrappers.ValidationError as exc:
+            for error in exc.errors():
+                if error["type"] == "value_error.blankname":
+                    continue
+                raise exc
         else:
             spotify_tracks.append(track)
 
