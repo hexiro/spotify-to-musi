@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing as t
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from spotify_to_musi.exceptions import BlankNameError
 
@@ -57,15 +57,15 @@ class SpotifyArtist(BaseModel):
     type: str
     uri: str
 
-    @validator("name")
-    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
         if not v:
             raise BlankNameError("artist")
         return v
 
 
 class SpotifyAlbum(BaseModel):
-    album_group: t.Union[t.Literal["single"], str]  # not sure what other options are
     album_type: t.Union[t.Literal["single"], str]  # not sure what other options are
     artists: list[SpotifyArtist]
     # 'external_urls': ExternalUrls  noqa: ERA001
@@ -80,8 +80,9 @@ class SpotifyAlbum(BaseModel):
     type: t.Union[t.Literal["album"], str]  # not sure what other options are
     uri: str
 
-    @validator("name")
-    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
         if not v:
             raise BlankNameError("album")
         return v
@@ -108,8 +109,9 @@ class SpotifyTrack(BaseModel):
     # 'external_urls': ExternalUrls  noqa: ERA001
     # 'preview_url': Optional[str]  noqa: ERA001
 
-    @validator("name")
-    def validate_name(cls, v: str) -> str:  # noqa: ANN101, N805
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
         if not v:
             raise BlankNameError("track")
         return v
@@ -122,7 +124,7 @@ class SpotifyTrack(BaseModel):
     def album_name(self: SpotifyTrack) -> str | None:
         # song is a single and has the single name as the album name,
         # represent this as None internally because it's not really an album
-        if self.album.album_type == "single" or self.album.album_group == "single" or self.album.total_tracks == 1:
+        if self.album.album_type == "single" or self.album.total_tracks == 1:
             return None
 
         return self.album.name

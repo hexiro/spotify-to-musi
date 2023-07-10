@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing as t
 from dataclasses import field
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from pydantic.dataclasses import dataclass
 
 from spotify_to_musi.typings.core import Artist, Playlist, Track
@@ -28,10 +28,9 @@ class YouTubeMusicSong(_YouTubeMusicResultType):
     album: t.Optional[YouTubeMusicAlbum]
     is_explicit: bool
 
-    @validator("album")
-    def must_not_be_single(
-        cls, v: YouTubeMusicAlbum, values: dict[str, t.Any]  # noqa: ANN101, N805
-    ) -> YouTubeMusicAlbum | None:
+    @field_validator("name", check_fields=False)  # type: ignore[type-var]
+    @classmethod
+    def must_not_be_single(cls, v: YouTubeMusicAlbum, values: dict[str, t.Any]) -> YouTubeMusicAlbum | None:
         # sourcery skip: assign-if-exp, reintroduce-else
         if v.name == values["title"]:
             return None
