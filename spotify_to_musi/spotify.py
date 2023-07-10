@@ -308,7 +308,7 @@ def spotify_track_items_to_spotify_tracks(spotify_track_items: list[dict[str, t.
             for error in exc.errors():
                 if error["type"] == "value_error.blankname":
                     continue
-                raise exc
+                raise
         else:
             spotify_tracks.append(track)
 
